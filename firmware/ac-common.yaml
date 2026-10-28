@@ -147,6 +147,7 @@ climate:
 select:
   - platform: template
     name: "Vertical louver"
+    id: ac_vertical_louver
     icon: mdi:arrow-up-down
     update_interval: 2s
     options: ["Default", "Top", "Upper", "Middle", "Lower", "Bottom",
@@ -154,11 +155,14 @@ select:
     lambda: |-
       const char *option = id(ac_control).vertical_louver();
       if (option == nullptr) return {};
+      if (id(ac_vertical_louver).has_state() &&
+          id(ac_vertical_louver).current_option().compare(option) == 0) return {};
       return std::string(option);
     set_action:
       - lambda: id(ac_control).set_vertical_louver(x);
   - platform: template
     name: "Horizontal louver"
+    id: ac_horizontal_louver
     icon: mdi:arrow-left-right
     update_interval: 2s
     options: ["Default", "Left", "Middle left", "Middle", "Middle right", "Right",
@@ -166,6 +170,8 @@ select:
     lambda: |-
       const char *option = id(ac_control).horizontal_louver();
       if (option == nullptr) return {};
+      if (id(ac_horizontal_louver).has_state() &&
+          id(ac_horizontal_louver).current_option().compare(option) == 0) return {};
       return std::string(option);
     set_action:
       - lambda: id(ac_control).set_horizontal_louver(x);
@@ -247,6 +253,7 @@ switch:
 number:
   - platform: template
     name: "Sleep level"
+    id: ac_sleep_level
     icon: mdi:power-sleep
     entity_category: config
     mode: box
@@ -254,11 +261,17 @@ number:
     max_value: 7
     step: 1
     update_interval: 2s
-    lambda: return id(ac_control).property_state("sleep");
+    lambda: |-
+      const float value = id(ac_control).property_state("sleep");
+      if (id(ac_sleep_level).has_state() &&
+          (value == id(ac_sleep_level).state ||
+           (std::isnan(value) && std::isnan(id(ac_sleep_level).state)))) return {};
+      return value;
     set_action:
       - lambda: id(ac_control).request_property("sleep", x);
   - platform: template
     name: "Generator mode"
+    id: ac_generator_mode
     disabled_by_default: true
     icon: mdi:transmission-tower
     entity_category: config
@@ -267,7 +280,12 @@ number:
     max_value: 3
     step: 1
     update_interval: 2s
-    lambda: return id(ac_control).property_state("generatorMode");
+    lambda: |-
+      const float value = id(ac_control).property_state("generatorMode");
+      if (id(ac_generator_mode).has_state() &&
+          (value == id(ac_generator_mode).state ||
+           (std::isnan(value) && std::isnan(id(ac_generator_mode).state)))) return {};
+      return value;
     set_action:
       - lambda: id(ac_control).request_property("generatorMode", x);
 
@@ -279,6 +297,7 @@ sensor:
     state_class: measurement
     accuracy_decimals: 1
     update_interval: 10s
+    filters: [{delta: 0.0}]
     lambda: |-
       if (!id(ac_control).status_fresh()) return {};
       return float(::tcl_ac::current_temperature_raw(id(ac_control).status()) - 200) * 0.1f;
@@ -289,6 +308,7 @@ sensor:
     state_class: measurement
     accuracy_decimals: 0
     update_interval: 5s
+    filters: [{delta: 0.0}]
     lambda: return id(ac_control).power_watts();
   - platform: template
     name: "Energy"
@@ -297,6 +317,7 @@ sensor:
     state_class: total_increasing
     accuracy_decimals: 3
     update_interval: 10s
+    filters: [{delta: 0.0}]
     lambda: return id(ac_control).energy_counter();
   # Labels below are inferred from live telemetry, not from stock firmware.
   - platform: template
@@ -307,6 +328,7 @@ sensor:
     accuracy_decimals: 0
     entity_category: diagnostic
     update_interval: 30s
+    filters: [{delta: 0.0}]
     lambda: |-
       if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 40) return {};
       return float(id(ac_control).status()[40]);
@@ -317,6 +339,7 @@ sensor:
     state_class: measurement
     accuracy_decimals: 0
     update_interval: 10s
+    filters: [{delta: 0.0}]
     lambda: |-
       if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 33) return {};
       return float(id(ac_control).status()[33]);
@@ -331,6 +354,7 @@ binary_sensor:
 text_sensor:
   - platform: template
     name: "Error codes"
+    id: ac_error_codes
     icon: mdi:alert-circle-outline
     entity_category: diagnostic
     update_interval: 10s
@@ -340,4 +364,6 @@ text_sensor:
       std::string out;
       for (size_t i = 0; i < errors.count; ++i)
         out += (i ? "," : "") + std::to_string(errors.code[i]);
-      return out.empty() ? std::string("none") : out;
+      if (out.empty()) out = "none";
+      if (id(ac_error_codes).has_state() && id(ac_error_codes).state == out) return {};
+      return out;

@@ -109,12 +109,12 @@ Create `firmware/secrets.yaml` from `firmware/secrets.example.yaml` **only if it
 
 ```sh
 esphome compile firmware/tac-12chsd.yaml
-BUILD='firmware/.esphome/build/wl6u-bench/.pioenvs/wl6u-bench'
+BUILD='firmware/.esphome/build/tcl-wl6u-ac/.pioenvs/tcl-wl6u-ac'
 python -m tools.prepare_install \
   --backup "$WORK/stock.bin" --build-dir "$BUILD" --output "$WORK/plan"
 ```
 
-`wl6u-bench` is the inherited ESPHome node/build name for both `tac-12chsd.yaml` and `all-fields.yaml`; it is not a typo. This guide uses the tested TAC-12CHSD profile. For another AC model, review [profile selection](CONTROLS.md#firmware-profiles) before substituting `all-fields.yaml`. Compilation is not a flash operation. The pinned environment is ESPHome 2026.10.1, LibreTiny 1.14.0 and ltchiptool 4.15.0.
+`tcl-wl6u-ac` is the ESPHome node/build name for both `tac-12chsd.yaml` and `all-fields.yaml`. This guide uses the tested TAC-12CHSD profile. For another AC model, review [profile selection](CONTROLS.md#firmware-profiles) before substituting `all-fields.yaml`. Compilation is not a flash operation. The pinned environment is ESPHome 2026.10.1, LibreTiny 1.14.0 and ltchiptool 4.15.0.
 
 The helper **does not access hardware**. It checks the stock flash layout and backup integrity, generated image integrity, matching build parts and board regions. It creates sector-padded writes, `plan.json` and a 2 MiB `expected-full.bin`. It refuses an existing output directory. If preparation fails, stop. Do not substitute another image or disable validation.
 

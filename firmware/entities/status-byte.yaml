@@ -6,6 +6,7 @@ entity_category: diagnostic
 accuracy_decimals: 0
 state_class: measurement
 update_interval: 10s
+filters: [{delta: 0.0}]
 lambda: |-
   if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= ${index}) return NAN;
   return float(id(ac_control).status()[${index}]);

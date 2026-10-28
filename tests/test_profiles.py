@@ -29,7 +29,7 @@ def entities(config):
     result = {}
     for package in config.get("packages", {}).values():
         result.update(entities(package))
-    for domain in ("climate", "select", "switch", "number", "sensor", "binary_sensor", "button"):
+    for domain in ("climate", "select", "switch", "number", "sensor", "text_sensor", "binary_sensor", "button"):
         for entity in config.get(domain, []):
             result[(domain, entity["name"])] = entity
     return result
@@ -57,6 +57,17 @@ class ProfileTests(unittest.TestCase):
         for key, entity in optional.items():
             with self.subTest(entity=key):
                 self.assertTrue(entity.get("disabled_by_default", False))
+
+    def test_entities_publish_only_changes(self):
+        for profile in ("tac-12chsd.yaml", "all-fields.yaml"):
+            for (domain, name), entity in entities(load_package(FIRMWARE / profile)).items():
+                with self.subTest(profile=profile, domain=domain, entity=name):
+                    if domain == "sensor":
+                        self.assertEqual(entity.get("filters"), [{"delta": 0.0}])
+                    elif domain in ("number", "select", "text_sensor"):
+                        entity_id = entity["id"]
+                        self.assertIn(f"id({entity_id}).has_state()", entity["lambda"])
+                        self.assertIn("return {};", entity["lambda"])
 
     def test_shared_controls_are_identical(self):
         tac = entities(load_package(FIRMWARE / "tac-12chsd.yaml"))

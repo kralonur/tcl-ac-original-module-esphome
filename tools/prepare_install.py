@@ -94,7 +94,7 @@ def make_plan(stock, application, bootloader, table):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backup", type=Path, required=True, help="Verified full stock backup from this device")
-    parser.add_argument("--build-dir", type=Path, required=True, help="ESPHome .pioenvs/wl6u-bench directory")
+    parser.add_argument("--build-dir", type=Path, required=True, help="ESPHome .pioenvs/tcl-wl6u-ac directory")
     parser.add_argument("--output", type=Path, required=True, help="New private directory; must not exist")
     args = parser.parse_args()
     try:

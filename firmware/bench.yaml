@@ -2,8 +2,8 @@
 # No AC UART or GPIO components; logger uses the separate LOG pads.
 # Not an application-only drop-in for stock TCL firmware. See README.md.
 esphome:
-  name: wl6u-bench
-  friendly_name: WL6U Bench
+  name: tcl-wl6u-ac
+  friendly_name: TCL WL6U AC
   min_version: 2026.10.1
 
 rtl87xx:

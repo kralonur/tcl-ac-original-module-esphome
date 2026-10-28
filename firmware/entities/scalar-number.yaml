@@ -1,6 +1,7 @@
 # Numeric stock enums stay numeric: their physical meanings are not all known.
 platform: template
 name: ${entity_name}
+id: ac_number_${property}
 disabled_by_default: true
 entity_category: config
 mode: box
@@ -8,6 +9,11 @@ min_value: ${minimum}
 max_value: ${maximum}
 step: ${step}
 update_interval: 2s
-lambda: return id(ac_control).property_state("${property}");
+lambda: |-
+  const float value = id(ac_control).property_state("${property}");
+  if (id(ac_number_${property}).has_state() &&
+      (value == id(ac_number_${property}).state ||
+       (std::isnan(value) && std::isnan(id(ac_number_${property}).state)))) return {};
+  return value;
 set_action:
   - lambda: id(ac_control).request_property("${property}", x);

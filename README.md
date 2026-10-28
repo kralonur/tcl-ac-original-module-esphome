@@ -50,6 +50,16 @@ After installation, add the **ESPHome integration** in Home Assistant using the 
 
 See [controls and limitations](docs/CONTROLS.md) for entity behavior, optional features and API actions. A delivered API call or TX log does not prove the AC accepted a command. Supply-voltage and compressor-frequency labels are inferred; physical louver labels have not been verified.
 
+### Home Assistant updates and heartbeat
+
+Entity states are sent to Home Assistant only when their values change, rather than repeating identical readings over Wi-Fi. This applies while the AC is running or off. Wired UART polling and local sensor sampling continue at their normal intervals; real changes are reported at the next sample. Connecting or reconnecting API clients still receive an initial state snapshot. API keepalives and any subscribed debug logs are separate traffic.
+
+**AC Link is our AC-side heartbeat indicator.** It stays online while validated AC status replies are fresh and goes offline if no valid status has arrived for more than 10 seconds. It does not toggle or send a repeated heartbeat message for every reply. Use it to check that the AC is still answering even when temperatures and settings remain unchanged. Home Assistant's ESPHome connection availability separately indicates whether the module itself is reachable.
+
+Two caveats:
+- An unchanged entity's HA update timestamp can look old even though it is still being sampled; check AC Link and device availability instead.
+- If deriving energy from the Power sensor with HA's [Integral helper](https://www.home-assistant.io/integrations/integration/), configure `max_sub_interval` for regular accumulation during constant power. The AC's separate energy-counter sensor does not require repeated identical readings.
+
 ## Build
 
 From this repository's root, using Linux and Python 3.14:
@@ -75,7 +85,7 @@ Choose a controls profile for the migrated **WL6U / RTL8720CF** hardware:
 - **[`firmware/tac-12chsd.yaml`](firmware/tac-12chsd.yaml):** entity selection tailored to the tested TAC-12CHSD. Everyday controls are enabled, optional diagnostics are disabled by default, and unsupported/extended entities are omitted.
 - **[`firmware/all-fields.yaml`](firmware/all-fields.yaml):** community testing profile exposing all currently implemented entities, including other-model/extended fields and raw outdoor temperature. Optional entities are disabled by default; users choose which to enable in HA. It does **not** detect compatibility, decode every unknown byte, or make this firmware suitable for different Wi-Fi module hardware.
 
-Both include shared controls, diagnostics, password-protected OTA and Wi-Fi recovery. See [profile selection and testing](docs/CONTROLS.md#firmware-profiles) before enabling unfamiliar controls. The old `ac-controls.yaml` entry point is now `tac-12chsd.yaml`; the ESPHome node name and credentials remain unchanged.
+Both include shared controls, diagnostics, password-protected OTA and Wi-Fi recovery. See [profile selection and testing](docs/CONTROLS.md#firmware-profiles) before enabling unfamiliar controls. The old `ac-controls.yaml` entry point is now `tac-12chsd.yaml`. The ESPHome node is named `tcl-wl6u-ac` (formerly `wl6u-bench`); credentials remain unchanged.
 
 If Wi-Fi cannot connect for one minute, join **WL6U Recovery** using `recovery_ap_password`, then open `http://192.168.4.1/` to enter the new network credentials. See [Wi-Fi recovery](docs/RECOVERY.md#wi-fi-recovery-hotspot). Hotspot connection, captive DNS, the recovery page and Wi-Fi reconfiguration were verified on the tested module.
 
