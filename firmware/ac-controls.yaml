@@ -9,6 +9,14 @@ ota:
   - platform: esphome
     password: !secret ota_password
 
+wifi:
+  ap:
+    ssid: "WL6U Recovery"
+    password: !secret recovery_ap_password
+    ap_timeout: 1min
+
+captive_portal:
+
 esphome:
   includes:
     - ac_codec.h
