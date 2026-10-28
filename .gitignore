@@ -3,7 +3,6 @@
 **/secrets.*.yaml
 !**/secrets.example.yaml
 **/.esphome/
-backups/
 *.bin
 *.uf2
 *.elf
