@@ -54,6 +54,10 @@ Physical louver positions behind the labels have not been checked on this unit. 
 
 These gates limit accidental commands; they do not establish electrical safety, appliance compatibility or long-term reliability. Full stock recovery remains untested.
 
+### LibreTiny serial receive patch
+
+Both control profiles wrap `SerialClass::read()` at link time ([`libretiny_serial_fix.h`](../firmware/libretiny_serial_fix.h)). The LibreTiny Realtek core drains the UART receive ring buffer from the main task without a critical section while the receive interrupt fills it; a single lost counter update shifts every later read (observed as a 5-byte shift that dropped the AC link on the tested unit). The wrapper holds the SDK's UART critical section for the duration of each read, which prevents that race.
+
 ## Logs
 
 ```sh

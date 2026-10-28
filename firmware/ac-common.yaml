@@ -23,10 +23,13 @@ esphome:
     - ac_report.h
     - ac_stream.h
     - ac_timer_codec.h
+    - libretiny_serial_fix.h
   platformio_options:
     build_flags:
       - -DPIN_SERIAL0_RX=12
       - -DPIN_SERIAL0_TX=11
+      # SerialClass::read() ring-buffer race fix; see libretiny_serial_fix.h.
+      - -Wl,--wrap=_ZN11SerialClass4readEv
   on_boot:
     priority: -100
     then:
