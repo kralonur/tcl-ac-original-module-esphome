@@ -17,17 +17,27 @@
 
 All serial work below happens with the module **removed from and completely disconnected from the AC**. Unplug mains before removal. Never attach USB or bench power to an installed module.
 
+## Wi-Fi recovery hotspot
+
+`ac-controls.yaml` enables a password-protected **WL6U Recovery** hotspot after one minute without a Wi-Fi connection. This requires firmware built with the recovery configuration; older installations and the bench/debug/loopback targets do not provide it. Hotspot connection with the saved password, captive DNS, the recovery page and Wi-Fi reconfiguration were verified on the tested module on 2026-10-28. After entering the normal network credentials, the encrypted API and AC status/energy replies resumed.
+
+1. Join **WL6U Recovery** from a phone or computer using the `recovery_ap_password` saved in your private `firmware/secrets.yaml`.
+2. Open the captive portal, or browse to `http://192.168.4.1/` if it does not open automatically. Stay connected if the phone warns that the network has no internet.
+3. Select or manually enter a compatible 2.4 GHz network and save its credentials. The network list was empty during the recorded test; manually entering the SSID worked. Reconnect Home Assistant using the device's new DHCP address if necessary; the API encryption key stays unchanged.
+
+Keep the recovery password private: access to the portal permits Wi-Fi reconfiguration and firmware upload. Update the Wi-Fi credentials in the local secrets file too, so future builds use the correct network. This hotspot cannot recover firmware that no longer boots; use the serial route below if needed.
+
 ## Wi-Fi/API problems that may not need a restore
 
 On the disconnected bench, remove the CLK strap for normal boot and monitor LOG-TX at **115200 8N1**. Use the [first-boot instructions](FLASHING.md#7-first-boot-on-the-bench); keep the monitor receive-only. Do not connect a serial terminal to the AC UART.
 
 - No readable ESPHome boot: verify power, common ground, LOG-TX→adapter RXD, normal-boot strap state and the actual image installed.
-- ESPHome boots but Wi-Fi does not: check the credentials compiled into the image and compatible 2.4 GHz network access. There is **no fallback AP** in these configurations.
+- ESPHome boots but Wi-Fi does not: try the [recovery hotspot](#wi-fi-recovery-hotspot) if the installed controls firmware includes it. Otherwise check the credentials compiled into the image and compatible 2.4 GHz network access.
 - Wi-Fi works but Home Assistant/API does not: check the actual DHCP IP, TCP reachability and the **API encryption key** used in your build. A new key may require reconfiguring the integration.
 - No OTA endpoint: `bench.yaml`, `ac-debug.yaml` and `loopback.yaml` deliberately have none. The controls target has one. A serial recovery/installation is needed when the running image cannot accept OTA.
 - No AC replies while disconnected: expected. Do not reinstall merely to troubleshoot bench boot or Wi-Fi.
 
-A bad Wi-Fi configuration cannot be repaired over Wi-Fi if it never joins. Use the serial route below, restore stock if needed, then follow the installation guide again with corrected local secrets. Do not invent a factory-reset pin sequence.
+If the installed firmware cannot join Wi-Fi and has no usable recovery hotspot, use the serial route below, restore stock if needed, then follow the installation guide again with corrected local secrets. Do not invent a factory-reset pin sequence.
 
 ## Cannot connect to the downloader
 

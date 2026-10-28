@@ -105,7 +105,7 @@ If reads fail, differ or are short, **stop** and use [connection troubleshooting
 
 ## 5. Build your firmware and prepare the five files (offline)
 
-Create `firmware/secrets.yaml` from `firmware/secrets.example.yaml` **only if it does not already exist**. Set your own Wi-Fi credentials, generate a fresh API encryption key, and generate a separate random `ota_password` using the commands in the example. If a local secrets file already exists, add the missing entry without replacing its other values. Never copy someone else's compiled image.
+Create `firmware/secrets.yaml` from `firmware/secrets.example.yaml` **only if it does not already exist**. Set your own Wi-Fi credentials, generate a fresh API encryption key, and generate separate random `ota_password` and `recovery_ap_password` values using the commands in the example. If a local secrets file already exists, add the missing entry without replacing its other values. Never copy someone else's compiled image.
 
 ```sh
 esphome compile firmware/ac-controls.yaml
@@ -191,7 +191,7 @@ esphome upload firmware/ac-controls.yaml --device YOUR_DEVICE_IP
 
 Keep the same API key, OTA password and local settings unless intentionally changing them. Save the working source/configuration and private build artifacts before updating. Do not perform a first stock-to-LibreTiny migration by OTA.
 
-**Existing passwordless installations:** add a fresh random `ota_password` to your existing local secrets before compiling. The upload above sends the newly password-protected image to the old server, which does not request password authentication. Subsequent uploads must use the new password. This migration was verified on the tested TAC-12CHSD on 2026-10-28: the updated firmware reconnected through the encrypted API and received AC status and energy replies. Subsequent password-authenticated uploads and rejection of an incorrect password remain untested. Keep serial recovery available and verify the running firmware after updating.
+**Existing passwordless installations:** add a fresh random `ota_password` to your existing local secrets before compiling. The upload above sends the newly password-protected image to the old server, which does not request password authentication. Subsequent uploads must use the new password. This migration was verified on the tested TAC-12CHSD on 2026-10-28: the updated firmware reconnected through the encrypted API and received AC status and energy replies. A subsequent password-authenticated upload was also verified on the same unit. Rejection of an incorrect password remains untested. Keep serial recovery available and verify the running firmware after updating.
 
 **Existing password-protected installations:** retain their current OTA password. Do not simply replace it before uploading: upload authentication must match the running firmware. For intentional rotation, follow [ESPHome's password-change procedure](https://esphome.io/components/ota/esphome/#changing-an-existing-password) or plan a serial recovery/reinstallation rather than improvising a bypass.
 

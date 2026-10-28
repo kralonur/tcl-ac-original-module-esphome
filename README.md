@@ -60,17 +60,17 @@ python3.14 -m venv .venv-firmware
 python -m pip install -r requirements-firmware.txt
 ```
 
-Create `firmware/secrets.yaml` from [the example](firmware/secrets.example.yaml), without overwriting an existing file. Set your Wi-Fi credentials, generate a fresh API encryption key, and generate a separate random OTA password using the commands in the example. For compile-only checks, use synthetic Wi-Fi values.
+Create `firmware/secrets.yaml` from [the example](firmware/secrets.example.yaml), without overwriting an existing file. Set your Wi-Fi credentials, generate a fresh API encryption key, and generate separate random OTA and recovery-hotspot passwords using the commands in the example. For compile-only checks, use synthetic Wi-Fi values.
 
 ```sh
 esphome compile firmware/ac-controls.yaml
 ```
 
-Compilation does not install firmware. Builds embed credentials: keep secrets, binaries and build directories private. Use the [flashing guide](docs/FLASHING.md) for first installation and [OTA update instructions](docs/FLASHING.md#later-updates-over-wi-fi) for an already migrated device. Existing passwordless installations need the new `ota_password` secret. Migration to the password-protected firmware was verified on the tested unit; subsequent password-authenticated uploads remain untested.
+Compilation does not install firmware. Builds embed credentials: keep secrets, binaries and build directories private. Use the [flashing guide](docs/FLASHING.md) for first installation and [OTA update instructions](docs/FLASHING.md#later-updates-over-wi-fi) for an already migrated device. Existing passwordless installations need the new `ota_password` secret. Migration to the password-protected firmware and a subsequent password-authenticated upload were verified on the tested unit; rejection of an incorrect password remains untested.
 
 ### Firmware configurations
 
-Use `firmware/ac-controls.yaml` for Home Assistant controls, diagnostics and password-protected OTA.
+Use `firmware/ac-controls.yaml` for Home Assistant controls, diagnostics, password-protected OTA and Wi-Fi recovery. If Wi-Fi cannot connect for one minute, join **WL6U Recovery** using `recovery_ap_password`, then open `http://192.168.4.1/` to enter the new network credentials. See [Wi-Fi recovery](docs/RECOVERY.md#wi-fi-recovery-hotspot). Hotspot connection, captive DNS, the recovery page and Wi-Fi reconfiguration were verified on the tested module.
 
 For bench work, `firmware/bench.yaml` only enables Wi-Fi, the API and the LOG UART (no AC UART or OTA). `firmware/ac-debug.yaml` adds status polling and raw AC logs, but no controls or OTA.
 
