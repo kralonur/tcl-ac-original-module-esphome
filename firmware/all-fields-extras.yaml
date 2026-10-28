@@ -1,0 +1,282 @@
+# All currently implemented optional entities for community testing.
+# Included by all-fields.yaml; not a standalone firmware target.
+# TAC-12CHSD observations below are NOT compatibility claims for other models.
+# Optional entities are disabled by default, including the provisional outdoor
+# conversion. Unknown bytes and factory/provisioning actions are not exposed.
+
+switch:
+  # --- Active (disabled_by_default: true): Working on TAC-12CHSD, non-classic/quirky ---
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Self learn", property: selfLearn}
+  # Recorded side effect on TAC-12CHSD: enabling this changed target to 18 C;
+  # disabling did NOT restore the previous target.
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Eight-degree heat flag", property: eightAddHot}
+  # Single-vane alias for horizontalSwitch on TAC-12CHSD.
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Left horizontal swing", property: leftHorizontalSwitch}
+
+  # --- Model-dependent: Verify support on your TCL AC model ---
+  # Ignored on TAC-12CHSD (status bit stays 0 in both heat and cool):
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "PTC heater", property: PTC}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Soft wind", property: softWind}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Self clean", property: selfClean}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Filter block detection", property: filterBlockSwitch}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Feel the wind", property: feelTheWind}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "High-temperature wind", property: highTemperatureWind}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Fahrenheit flag", property: temperatureType}
+  #
+  # Extended / dual-zone features (P[55..62], not present in TAC-12CHSD 55-byte reply):
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "AI function", property: aiFunction}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Constant-temperature dehumidification", property: constTemperatureDehumidification}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Temperature-humidity control", property: temperatureHumidityControlling}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Right horizontal swing", property: rightHorizontalSwitch}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Right quiet mode", property: rightSilenceSwitch}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Right boost", property: rightTurbo}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Surround wind", property: surroundWind}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Polarity freeze", property: polarityFreeze}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Infrared power flag", property: infrPower}
+  - !include
+      file: entities/scalar-switch.yaml
+      vars: {entity_name: "Temperature beep flag", property: beepTempEn}
+
+number:
+  # --- Active (disabled_by_default: true): Working on TAC-12CHSD, raw subfields ---
+  # Stock reports P[27] bit 5 for LRWideAngleFreeze; P[47] bits 0..2 are already
+  # covered by the Horizontal louver select in ac-common.yaml.
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Wide-angle freeze (raw)", property: LRWideAngleFreeze, minimum: 0, maximum: 7, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Left horizontal subfield (raw)", property: leftHorizontalSubfield, minimum: 0, maximum: 7, step: 1}
+
+  # --- Model-dependent: Verify support on your TCL AC model ---
+  # Ignored on TAC-12CHSD (status subfield stays unchanged):
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Vertical wind (raw)", property: verticalWind, minimum: 0, maximum: 3, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Horizontal wind (raw)", property: horizontalWind, minimum: 0, maximum: 7, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Advanced ECO mode (raw)", property: advancedECOMode, minimum: 0, maximum: 3, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Infrared direction (raw)", property: infrDirect, minimum: 0, maximum: 2, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Constant temperature (raw)", property: constantTemp, minimum: 16, maximum: 31, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Target electricity (raw)", property: targetElectric, minimum: 0, maximum: 99.99, step: 0.01}
+  #
+  # Extended / dual-zone numbers (P[55..62], not present in TAC-12CHSD 55-byte reply):
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Right horizontal subfield (raw)", property: rightHorizontalSubfield, minimum: 0, maximum: 7, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Dual temperature (raw)", property: twoTemperature, minimum: 0, maximum: 3, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Dual temperature skew (raw)", property: twoTemperatureSkew, minimum: 0, maximum: 3, step: 1}
+  - !include
+      file: entities/scalar-number.yaml
+      vars: {entity_name: "Right horizontal direction (raw)", property: rightHorizontalDirection, minimum: 0, maximum: 15, step: 1}
+
+# Dual-zone right fan speed requires P[55..62].
+select:
+  - platform: template
+    name: "Right fan speed (raw)"
+    disabled_by_default: true
+    entity_category: config
+    options: ["0", "2", "3", "4", "5", "6"]
+    update_interval: 2s
+    lambda: |-
+      const float value = id(ac_control).property_state("rightWindSpeed");
+      if (std::isnan(value) || (value != 0 && (value < 2 || value > 6))) return {};
+      return std::to_string(int(value));
+    set_action:
+      - lambda: |-
+          for (int value : {0, 2, 3, 4, 5, 6})
+            if (x == std::to_string(value))
+              id(ac_control).request_property("rightWindSpeed", value);
+
+sensor:
+  # Estimated from raw 35 versus an external reading of 15.3 °C.
+  # Assumes 1 °C per count with a -20 °C offset; verify at other temperatures.
+  - platform: template
+    name: "Outdoor temperature (estimated)"
+    disabled_by_default: true
+    device_class: temperature
+    unit_of_measurement: "°C"
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 30) return NAN;
+      return float(id(ac_control).status()[30]) - 20.0f;
+
+  # --- Active (disabled_by_default: true): Working raw telemetry on TAC-12CHSD ---
+  - !include
+      file: entities/status-byte.yaml
+      vars: {entity_name: "Indoor coil (raw)", index: 25}
+  - !include
+      file: entities/status-byte.yaml
+      vars: {entity_name: "Indoor fan (raw)", index: 29}
+  - !include
+      file: entities/status-byte.yaml
+      vars: {entity_name: "Outdoor temperature (raw)", index: 30}
+  - !include
+      file: entities/status-byte.yaml
+      vars: {entity_name: "Outdoor coil (raw)", index: 31}
+  - !include
+      file: entities/status-byte.yaml
+      vars: {entity_name: "Compressor discharge (raw)", index: 32}
+  - !include
+      file: entities/status-byte.yaml
+      vars: {entity_name: "Outdoor fan (raw)", index: 34}
+  - !include
+      file: entities/status-byte.yaml
+      vars: {entity_name: "Load index (raw)", index: 41}
+  - platform: template
+    name: "Energy counter (raw)"
+    disabled_by_default: true
+    entity_category: diagnostic
+    accuracy_decimals: 6
+    update_interval: 10s
+    lambda: return id(ac_control).energy_counter();
+  - platform: template
+    name: "Energy power byte (raw)"
+    disabled_by_default: true
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: return id(ac_control).energy_power_raw();
+  - platform: template
+    name: "Status payload length"
+    disabled_by_default: true
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (!id(ac_control).status_fresh()) return NAN;
+      return float(id(ac_control).status_length());
+  - platform: template
+    name: "AC type code"
+    disabled_by_default: true
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (!id(ac_control).status_fresh()) return NAN;
+      return float((id(ac_control).status()[14] >> 3) & 15);
+
+  # --- Model-dependent: Require extended status bytes P[60..61] ---
+  - platform: template
+    name: "Upper temperature limit"
+    disabled_by_default: true
+    entity_category: diagnostic
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 60) return NAN;
+      const int value = id(ac_control).status()[60] & 15;
+      return float(value <= 5 ? 31 - value : 31);
+  - platform: template
+    name: "Lower temperature limit"
+    disabled_by_default: true
+    entity_category: diagnostic
+    unit_of_measurement: "°C"
+    device_class: temperature
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 61) return NAN;
+      const int value = id(ac_control).status()[61] & 15;
+      return float(value <= 9 ? 16 + value : 16);
+
+binary_sensor:
+  # --- Active (disabled_by_default: true): Present in TAC-12CHSD 55-byte status ---
+  - !include
+      file: entities/status-bit.yaml
+      vars: {entity_name: "Filter blocked flag", index: 45, bit: 1}
+
+  # --- Model-dependent: Require extended status bytes P[59..60] ---
+  - !include
+      file: entities/status-bit.yaml
+      vars: {entity_name: "Heating limit flag", index: 59, bit: 5}
+  - !include
+      file: entities/status-bit.yaml
+      vars: {entity_name: "Cooling and dehumidification limit flag", index: 59, bit: 6}
+  - !include
+      file: entities/status-bit.yaml
+      vars: {entity_name: "Access card flag", index: 60, bit: 4}
+
+button:
+  # --- Active (disabled_by_default: true): Working queries on TAC-12CHSD ---
+  - platform: template
+    name: "Query AC status"
+    disabled_by_default: true
+    entity_category: diagnostic
+    on_press:
+      - lambda: id(ac_control).query("status");
+  - platform: template
+    name: "Query energy"
+    disabled_by_default: true
+    entity_category: diagnostic
+    on_press:
+      - lambda: id(ac_control).query("energy");
+  - platform: template
+    name: "Query auxiliary"
+    disabled_by_default: true
+    entity_category: diagnostic
+    on_press:
+      - lambda: id(ac_control).query("auxiliary");
+
+  # --- Model-dependent: Returns 8-byte stub instead of 119-byte table ---
+  - platform: template
+    name: "Query timers"
+    disabled_by_default: true
+    entity_category: diagnostic
+    on_press:
+      - lambda: id(ac_control).query("timers");

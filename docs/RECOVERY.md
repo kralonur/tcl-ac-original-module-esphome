@@ -19,7 +19,7 @@ All serial work below happens with the module **removed from and completely disc
 
 ## Wi-Fi recovery hotspot
 
-`ac-controls.yaml` enables a password-protected **WL6U Recovery** hotspot after one minute without a Wi-Fi connection. This requires firmware built with the recovery configuration; older installations and the bench/debug/loopback targets do not provide it. Hotspot connection with the saved password, captive DNS, the recovery page and Wi-Fi reconfiguration were verified on the tested module on 2026-10-28. After entering the normal network credentials, the encrypted API and AC status/energy replies resumed.
+Both controls profiles (`tac-12chsd.yaml` and `all-fields.yaml`) enable a password-protected **WL6U Recovery** hotspot after one minute without a Wi-Fi connection. This requires firmware built with the recovery configuration; older installations and the bench/debug/loopback targets do not provide it. Hotspot connection with the saved password, captive DNS, the recovery page and Wi-Fi reconfiguration were verified on the tested module on 2026-10-28. After entering the normal network credentials, the encrypted API and AC status/energy replies resumed.
 
 1. Join **WL6U Recovery** from a phone or computer using the `recovery_ap_password` saved in your private `firmware/secrets.yaml`.
 2. Open the captive portal, or browse to `http://192.168.4.1/` if it does not open automatically. Stay connected if the phone warns that the network has no internet.

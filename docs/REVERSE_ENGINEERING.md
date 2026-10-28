@@ -48,7 +48,7 @@ The useful control families include:
 - Display, beep, health, anti-mould, light sensing and 3D airflow.
 - Additional stock properties for heating, cleaning, filtering, dual-zone operation and other model-specific features.
 
-A name in that table is not proof of a working feature on the tested AC. The normal Home Assistant entities cover the everyday controls. Additional and model-specific definitions live in [`ac-extras.yaml`](../firmware/ac-extras.yaml): some are available but disabled by default, while unsupported or extended features remain commented out. Factory and provisioning setters are not exposed as ordinary controls.
+A name in that table is not proof of a working feature on the tested AC. The normal Home Assistant entities cover the everyday controls. Additional and model-specific definitions live in [`tac-12chsd-extras.yaml`](../firmware/tac-12chsd-extras.yaml): some are available but disabled by default, while unsupported or extended features remain commented out. The community [`all-fields.yaml`](../firmware/all-fields.yaml) profile exposes all currently implemented entities with optional fields disabled by default; this is not capability autodetection. See [profile selection](CONTROLS.md#firmware-profiles). Factory and provisioning setters are not exposed as ordinary controls.
 
 The complete implemented names and validation are in [`tcl_ac.h`](../firmware/components/tcl_ac/tcl_ac.h) and [`ac_codec.h`](../firmware/ac_codec.h). See [controls](CONTROLS.md) for entity behavior and API actions.
 
@@ -75,7 +75,7 @@ That discards the fractional part. The ESPHome climate entity and room-temperatu
 
 So the offset and scale aren't adjustments made to get a plausible reading: they are taken from the original firmware. Keeping tenths preserves information already present in the AC's reply. It does not make the physical sensor more accurate, calibrate it against a thermometer or prove what the phone app displays in every version.
 
-The packed-value and stock-compatible integer helpers are in [`ac_report.h`](../firmware/ac_report.h). The climate conversion is in [`tcl_ac_climate.h`](../firmware/components/tcl_ac/tcl_ac_climate.h), and the separate sensor uses the same conversion in [`ac-controls.yaml`](../firmware/ac-controls.yaml).
+The packed-value and stock-compatible integer helpers are in [`ac_report.h`](../firmware/ac_report.h). The climate conversion is in [`tcl_ac_climate.h`](../firmware/components/tcl_ac/tcl_ac_climate.h), and the separate sensor uses the same conversion in the shared [`ac-common.yaml`](../firmware/ac-common.yaml) package.
 
 ### Target temperature
 
@@ -101,6 +101,7 @@ Access to received data is no longer limited to what the app displays. ESPHome r
 | --- | --- |
 | Power, mode, setpoint, fan, presets and swing | Normal Home Assistant controls and returned status |
 | Room temperature | Stock-derived conversion, preserving tenths |
+| Outdoor temperature (estimated) | Provisional `P[30] - 20` °C; raw 35 compared with about 15.3 °C externally, not stock-verified |
 | Display, health, anti-mould, light sense and related flags | Decoded switches where supported |
 | Error flags | Numeric codes mapped from the stock reporting code, not guessed fault descriptions |
 | Energy replies | Decoded counter, raw values and derived power; see the unit caveat below |
@@ -113,7 +114,7 @@ This is access to the AC-to-module data rather than only the app's selected pres
 
 There are still important gaps:
 
-- The stock firmware doesn't decode some hardware bytes. Labels such as supply voltage and compressor frequency are inferred; other hardware fields deliberately stay raw.
+- The stock firmware doesn't decode some hardware bytes. Labels such as supply voltage and compressor frequency are inferred. Outdoor temperature additionally has a provisional Celsius estimate based on one external comparison; its scale needs checks at other temperatures. Other hardware fields deliberately stay raw. See [sensor limitations](CONTROLS.md#entities).
 - The original energy-counter arithmetic was recovered, but its physical unit wasn't established by that alone. The current configuration presents kWh and derives power from counter changes; those units still need independent measurement validation.
 - Error numbers and capability IDs don't automatically reveal their physical meaning.
 - Beep is the module's remembered requested value, not a state returned by the AC.

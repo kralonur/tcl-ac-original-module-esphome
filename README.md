@@ -63,14 +63,21 @@ python -m pip install -r requirements-firmware.txt
 Create `firmware/secrets.yaml` from [the example](firmware/secrets.example.yaml), without overwriting an existing file. Set your Wi-Fi credentials, generate a fresh API encryption key, and generate separate random OTA and recovery-hotspot passwords using the commands in the example. For compile-only checks, use synthetic Wi-Fi values.
 
 ```sh
-esphome compile firmware/ac-controls.yaml
+esphome compile firmware/tac-12chsd.yaml
 ```
 
 Compilation does not install firmware. Builds embed credentials: keep secrets, binaries and build directories private. Use the [flashing guide](docs/FLASHING.md) for first installation and [OTA update instructions](docs/FLASHING.md#later-updates-over-wi-fi) for an already migrated device. Existing passwordless installations need the new `ota_password` secret. Migration to the password-protected firmware and a subsequent password-authenticated upload were verified on the tested unit; rejection of an incorrect password remains untested.
 
 ### Firmware configurations
 
-Use `firmware/ac-controls.yaml` for Home Assistant controls, diagnostics, password-protected OTA and Wi-Fi recovery. If Wi-Fi cannot connect for one minute, join **WL6U Recovery** using `recovery_ap_password`, then open `http://192.168.4.1/` to enter the new network credentials. See [Wi-Fi recovery](docs/RECOVERY.md#wi-fi-recovery-hotspot). Hotspot connection, captive DNS, the recovery page and Wi-Fi reconfiguration were verified on the tested module.
+Choose a controls profile for the migrated **WL6U / RTL8720CF** hardware:
+
+- **[`firmware/tac-12chsd.yaml`](firmware/tac-12chsd.yaml):** entity selection tailored to the tested TAC-12CHSD. Everyday controls are enabled, optional diagnostics are disabled by default, and unsupported/extended entities are omitted.
+- **[`firmware/all-fields.yaml`](firmware/all-fields.yaml):** community testing profile exposing all currently implemented entities, including other-model/extended fields and raw outdoor temperature. Optional entities are disabled by default; users choose which to enable in HA. It does **not** detect compatibility, decode every unknown byte, or make this firmware suitable for different Wi-Fi module hardware.
+
+Both include shared controls, diagnostics, password-protected OTA and Wi-Fi recovery. See [profile selection and testing](docs/CONTROLS.md#firmware-profiles) before enabling unfamiliar controls. The old `ac-controls.yaml` entry point is now `tac-12chsd.yaml`; the ESPHome node name and credentials remain unchanged.
+
+If Wi-Fi cannot connect for one minute, join **WL6U Recovery** using `recovery_ap_password`, then open `http://192.168.4.1/` to enter the new network credentials. See [Wi-Fi recovery](docs/RECOVERY.md#wi-fi-recovery-hotspot). Hotspot connection, captive DNS, the recovery page and Wi-Fi reconfiguration were verified on the tested module.
 
 For bench work, `firmware/bench.yaml` only enables Wi-Fi, the API and the LOG UART (no AC UART or OTA). `firmware/ac-debug.yaml` adds status polling and raw AC logs, but no controls or OTA.
 
@@ -79,6 +86,16 @@ For bench work, `firmware/bench.yaml` only enables Wi-Fi, the API and the LOG UA
 ## Development
 
 Keep fixes focused and include the checks run in your pull request. Compatibility reports should name the exact AC/module revision and distinguish observed behavior from inference. Do not attach credentials, device dumps, compiled firmware or unredacted logs/photos. Keep API/OTA access on a trusted network; do not disclose sensitive findings in public issues.
+
+Profile regression checks (using the build environment above):
+
+```sh
+python -m unittest discover -s tests -v
+esphome compile firmware/tac-12chsd.yaml
+esphome compile firmware/all-fields.yaml
+```
+
+These are offline checks, not hardware compatibility tests or uploads.
 
 ## Layout
 

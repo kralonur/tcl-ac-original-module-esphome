@@ -1,0 +1,6 @@
+# Tested TAC-12CHSD entity selection for the migrated WL6U / RTL8720CF.
+# Optional entities remain disabled by default; unsupported ones are omitted.
+# See ../docs/CONTROLS.md before adapting this profile to another model.
+packages:
+  controls: !include ac-common.yaml
+  extras: !include tac-12chsd-extras.yaml

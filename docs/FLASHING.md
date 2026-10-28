@@ -108,13 +108,13 @@ If reads fail, differ or are short, **stop** and use [connection troubleshooting
 Create `firmware/secrets.yaml` from `firmware/secrets.example.yaml` **only if it does not already exist**. Set your own Wi-Fi credentials, generate a fresh API encryption key, and generate separate random `ota_password` and `recovery_ap_password` values using the commands in the example. If a local secrets file already exists, add the missing entry without replacing its other values. Never copy someone else's compiled image.
 
 ```sh
-esphome compile firmware/ac-controls.yaml
+esphome compile firmware/tac-12chsd.yaml
 BUILD='firmware/.esphome/build/wl6u-bench/.pioenvs/wl6u-bench'
 python -m tools.prepare_install \
   --backup "$WORK/stock.bin" --build-dir "$BUILD" --output "$WORK/plan"
 ```
 
-`wl6u-bench` is the inherited ESPHome node/build name even for `ac-controls.yaml`; it is not a typo. Compilation is not a flash operation. The pinned environment is ESPHome 2026.10.1, LibreTiny 1.14.0 and ltchiptool 4.15.0.
+`wl6u-bench` is the inherited ESPHome node/build name for both `tac-12chsd.yaml` and `all-fields.yaml`; it is not a typo. This guide uses the tested TAC-12CHSD profile. For another AC model, review [profile selection](CONTROLS.md#firmware-profiles) before substituting `all-fields.yaml`. Compilation is not a flash operation. The pinned environment is ESPHome 2026.10.1, LibreTiny 1.14.0 and ltchiptool 4.15.0.
 
 The helper **does not access hardware**. It checks the stock flash layout and backup integrity, generated image integrity, matching build parts and board regions. It creates sector-padded writes, `plan.json` and a 2 MiB `expected-full.bin`. It refuses an existing output directory. If preparation fails, stop. Do not substitute another image or disable validation.
 
@@ -167,7 +167,7 @@ Every write uses device hash checking; the last comparison checks **all 2 MiB**,
 3. Check encrypted API logs over Wi-Fi with your device's actual DHCP address:
 
    ```sh
-   esphome logs firmware/ac-controls.yaml --device YOUR_DEVICE_IP
+   esphome logs firmware/tac-12chsd.yaml --device YOUR_DEVICE_IP
    ```
 
 4. Hardware UART0 should report TX PA11 / RX PA12, 9600 8E1 without a failed component. **No AC replies on the disconnected bench is normal.** Do not use the transmitting `loopback.yaml` image in the appliance.
@@ -182,11 +182,11 @@ In Home Assistant add **ESPHome**, enter the module's address and its API encryp
 
 ## Later updates over Wi-Fi
 
-Only `ac-controls.yaml` enables OTA; stock firmware and the bench/debug/loopback targets do not. Build and upload with the known-good configuration and your actual IP:
+Both controls profiles (`tac-12chsd.yaml` and `all-fields.yaml`) enable OTA; stock firmware and the bench/debug/loopback targets do not. Build and upload with the known-good configuration and your actual IP:
 
 ```sh
-esphome compile firmware/ac-controls.yaml && \
-esphome upload firmware/ac-controls.yaml --device YOUR_DEVICE_IP
+esphome compile firmware/tac-12chsd.yaml && \
+esphome upload firmware/tac-12chsd.yaml --device YOUR_DEVICE_IP
 ```
 
 Keep the same API key, OTA password and local settings unless intentionally changing them. Save the working source/configuration and private build artifacts before updating. Do not perform a first stock-to-LibreTiny migration by OTA.

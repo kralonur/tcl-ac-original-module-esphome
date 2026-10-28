@@ -1,0 +1,9 @@
+# Community testing profile for the migrated WL6U / RTL8720CF only.
+# Exposes every currently implemented entity, NOT every unknown protocol byte.
+# No model/capability autodetection: a visible entity is not proof of support.
+# Optional/raw/extended entities are disabled by default; enable selectively
+# in Home Assistant and verify both status readback and physical behavior.
+# Existing HA entity enable/disable choices are preserved across profile changes.
+packages:
+  controls: !include ac-common.yaml
+  extras: !include all-fields-extras.yaml

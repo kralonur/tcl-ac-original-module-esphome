@@ -1,9 +1,9 @@
-# Experimental controls on the original RTL8720CF, migrated LibreTiny layout only.
+# Shared controls package, not a standalone firmware target.
+# Original RTL8720CF, migrated LibreTiny layout only.
 # Raw TX/RX + decoded RX logs + Wi-Fi OTA enabled so future updates do not require
 # removing the module from the AC. No factory/reset/provisioning actions exposed.
 packages:
   bench: !include bench.yaml
-  extras: !include ac-extras.yaml
 
 ota:
   - platform: esphome
@@ -131,10 +131,8 @@ api:
         - lambda: id(ac_control).set_clock(year, month, day, hour, minute, second);
 
 # Home Assistant entities (ESPHome native API; no MQTT broker needed).
-# Confirmed working classic TAC-12CHSD controls, sensors, and Energy (kWh) are
-# enabled by default here.
-# ac-extras.yaml holds non-classic/raw working TAC-12CHSD entities (disabled by
-# default) and keeps unsupported features commented out for other TCL models.
+# Everyday controls are enabled by default; support on other models is unverified.
+# The selected firmware profile adds its own optional/model-specific entities.
 # None of these transmit on their own: requests are queued in tcl_ac and sent
 # after a fresh AC status. Switches use restore_mode DISABLED so nothing is
 # sent at boot.
@@ -258,6 +256,7 @@ number:
       - lambda: id(ac_control).request_property("sleep", x);
   - platform: template
     name: "Generator mode"
+    disabled_by_default: true
     icon: mdi:transmission-tower
     entity_category: config
     mode: box

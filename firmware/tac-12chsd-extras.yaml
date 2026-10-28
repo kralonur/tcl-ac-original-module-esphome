@@ -1,14 +1,14 @@
 # Optional Home Assistant entities for decoded stock features.
-# Included by ac-controls.yaml, not a standalone firmware target.
+# Included by tac-12chsd.yaml, not a standalone firmware target.
 #
 # Organization for TAC-12CHSD + Community TCL AC models:
 # - Classic working TAC-12CHSD controls, sensors & Energy (kWh) are enabled by
-# default in ac-controls.yaml.
+# default in ac-common.yaml.
 # - Non-classic, raw, or quirky features that DO work on TAC-12CHSD are active
 # below with disabled_by_default: true (via entities/*.yaml).
 # - Features that DO NOT work on TAC-12CHSD (ignored in 55-byte status or
 # requiring extended P[55..62] / 119-byte timer tables) are commented out
-# below so community users with other TCL models can uncomment them.
+# below. Other models can start with all-fields.yaml instead.
 
 switch:
   # --- Active (disabled_by_default: true): Working on TAC-12CHSD, non-classic/quirky ---
@@ -84,7 +84,7 @@ switch:
 number:
   # --- Active (disabled_by_default: true): Working on TAC-12CHSD, raw subfields ---
   # Stock reports P[27] bit 5 for LRWideAngleFreeze; P[47] bits 0..2 are already
-  # covered by the Horizontal louver select in ac-controls.yaml.
+  # covered by the Horizontal louver select in ac-common.yaml.
   - !include
       file: entities/scalar-number.yaml
       vars: {entity_name: "Wide-angle freeze (raw)", property: LRWideAngleFreeze, minimum: 0, maximum: 7, step: 1}
@@ -146,6 +146,19 @@ number:
 #               id(ac_control).request_property("rightWindSpeed", value);
 
 sensor:
+  # Estimated from raw 35 versus an external reading of 15.3 °C.
+  # Assumes 1 °C per count with a -20 °C offset; verify at other temperatures.
+  - platform: template
+    name: "Outdoor temperature (estimated)"
+    device_class: temperature
+    unit_of_measurement: "°C"
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 30) return NAN;
+      return float(id(ac_control).status()[30]) - 20.0f;
+
   # --- Active (disabled_by_default: true): Working raw telemetry on TAC-12CHSD ---
   - !include
       file: entities/status-byte.yaml
@@ -153,9 +166,6 @@ sensor:
   - !include
       file: entities/status-byte.yaml
       vars: {entity_name: "Indoor fan (raw)", index: 29}
-  - !include
-      file: entities/status-byte.yaml
-      vars: {entity_name: "Outdoor temperature (raw)", index: 30}
   - !include
       file: entities/status-byte.yaml
       vars: {entity_name: "Outdoor coil (raw)", index: 31}
