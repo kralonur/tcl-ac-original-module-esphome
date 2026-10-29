@@ -31,11 +31,11 @@ esphome:
       # SerialClass::read() ring-buffer race fix; see libretiny_serial_fix.h.
       - -Wl,--wrap=_ZN11SerialClass4readEv
   on_boot:
-    priority: -100
-    then:
-      - logger.log:
-          level: WARN
-          format: "EXPERIMENTAL AC CONTROLS: raw TX/RX; TX does not prove AC acceptance."
+    - priority: -100
+      then:
+        - logger.log:
+            level: WARN
+            format: "EXPERIMENTAL AC CONTROLS: raw TX/RX; TX does not prove AC acceptance."
 
 external_components:
   - source:

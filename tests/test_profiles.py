@@ -69,6 +69,18 @@ class ProfileTests(unittest.TestCase):
                         self.assertIn(f"id({entity_id}).has_state()", entity["lambda"])
                         self.assertIn("return {};", entity["lambda"])
 
+    def test_wpa2_policy_is_set_before_wifi_starts(self):
+        from esphome.config_helpers import merge_config
+
+        config = merge_config(load_package(FIRMWARE / "bench.yaml"),
+                              load_package(FIRMWARE / "ac-common.yaml"))
+        self.assertIn("<wifi_conf.h>", config["esphome"]["includes"])
+        boot = config["esphome"]["on_boot"]
+        self.assertIsInstance(boot, list)
+        self.assertEqual({action["priority"] for action in boot}, {300, -100})
+        security_boot = next(action for action in boot if action["priority"] > 250)
+        self.assertIn("wifi_set_wpa_mode(WPA2_ONLY_MODE)", security_boot["then"][0]["lambda"])
+
     def test_shared_controls_are_identical(self):
         tac = entities(load_package(FIRMWARE / "tac-12chsd.yaml"))
         all_fields = entities(load_package(FIRMWARE / "all-fields.yaml"))

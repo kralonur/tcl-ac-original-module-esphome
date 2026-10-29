@@ -5,6 +5,18 @@ esphome:
   name: tcl-wl6u-ac
   friendly_name: TCL WL6U AC
   min_version: 2026.10.1
+  includes:
+    - <wifi_conf.h>
+  on_boot:
+    # Before Wi-Fi setup (250). The SDK applies this policy on every STA join.
+    - priority: 300
+      then:
+        - lambda: |-
+            if (wifi_set_wpa_mode(WPA2_ONLY_MODE) == 0) {
+              ESP_LOGI("wifi_security", "Station authentication restricted to WPA2");
+            } else {
+              ESP_LOGE("wifi_security", "Failed to restrict station authentication to WPA2");
+            }
 
 rtl87xx:
   board: generic-rtl8720cf-2mb-992k

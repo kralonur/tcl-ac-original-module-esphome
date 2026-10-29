@@ -41,6 +41,14 @@ The AC connection uses PA11 for TX and PA12 for RX at 9600 baud, 8E1. Programmin
 
 After installation, add the **ESPHome integration** in Home Assistant using the device's address and API encryption key.
 
+### Why WPA2 is forced
+
+Use WPA2-Personal or a WPA2/WPA3 mixed Wi-Fi network. On the tested module and ASUS router, WPA3 connections repeatedly dropped at the same minute and second each hour, making the device unavailable in Home Assistant despite strong signal. The timing suggested a compatibility problem during hourly group-key renewal, but the exact cause has not been proven.
+
+As a targeted workaround, an early boot hook in `firmware/bench.yaml` calls `wifi_set_wpa_mode(WPA2_ONLY_MODE)` before Wi-Fi starts. This restricts the module to WPA2 on initial connection and reconnects, without changing the router's security settings or the network credentials. WPA2 with AES was confirmed after flashing, and the device stayed connected through the first previously failing hourly boundary; long-term stability is not yet verified.
+
+WPA3-only networks are not supported with this policy. Protected management frames (PMF) are not disabled, and the router's normal group-key renewal remains enabled.
+
 ## Controls
 
 - Climate: off, auto, cool, dry, fan and heat; 16–31 °C in 0.5 °C steps.
