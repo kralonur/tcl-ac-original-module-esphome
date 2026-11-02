@@ -150,9 +150,20 @@ class TclAc : public Component, public uart::UARTDevice {
     const bool power_on = (status_[2] >> 4) & 1;
     if (!power_on && status_[29] == 0 && status_[33] == 0)
       return 0.0f;
-    if (std::isfinite(energy_rate_w_) && millis() - prev_energy_ms_ <= 180000)
+    const uint32_t valid_ms = energy_rate_valid_ms(energy_rate_w_);
+    if (valid_ms != 0 && millis() - prev_energy_ms_ <= valid_ms)
       return std::round(energy_rate_w_);
     return NAN;
+  }
+  // Milliseconds a d(kWh)/dt rate stays valid without a new counter tick: at
+  // rate R watts, 0.01 kWh (36 kJ) is due within 36000000/R ms. After two
+  // missed intervals the load changed, so report unknown instead of the last
+  // nonzero estimate; the hard cap keeps slow loads bounded.
+  static uint32_t energy_rate_valid_ms(float rate_w) {
+    if (!std::isfinite(rate_w) || rate_w <= 0.0f)
+      return 0;
+    const double due_ms = 36000000.0 / double(rate_w);
+    return std::min(uint32_t(180000), static_cast<uint32_t>(2.0 * due_ms));
   }
   // beepSwitch is not in the status reply: this is the cached value sent with
   // every control frame (stock default on, reset at boot).
