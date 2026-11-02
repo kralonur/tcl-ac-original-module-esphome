@@ -80,13 +80,26 @@ class ProfileTests(unittest.TestCase):
                         self.assertIn("return {};", entity["lambda"])
 
     def test_module_health_diagnostics(self):
-        for profile in ("tac-12chsd.yaml", "all-fields.yaml"):
-            selected = entities(load_package(FIRMWARE / profile))
-            for name in ("Uptime", "Wi-Fi signal", "Free heap", "Minimum free heap", "Max loop time"):
-                with self.subTest(profile=profile, entity=name):
-                    self.assertFalse(selected[("sensor", name)].get("disabled_by_default", False))
-            self.assertIn(("text_sensor", "Reset reason"), selected)
-            self.assertIn(("button", "Restart"), selected)
+        health = [("sensor", name) for name in
+                  ("Uptime", "Wi-Fi signal", "Free heap", "Minimum free heap", "Max loop time")]
+        health.append(("text_sensor", "Reset reason"))
+        # The everyday profile keeps periodic Wi-Fi traffic to the AC's own
+        # entities: no module-health sampling, only the on-demand restart.
+        tac_config = load_package(FIRMWARE / "tac-12chsd.yaml")
+        tac = entities(tac_config)
+        self.assertNotIn("debug", load_package(FIRMWARE / "ac-common.yaml"))
+        self.assertNotIn("debug", load_package(FIRMWARE / "tac-12chsd-extras.yaml"))
+        for key in health:
+            with self.subTest(profile="tac-12chsd.yaml", entity=key):
+                self.assertNotIn(key, tac)
+        self.assertIn(("button", "Restart"), tac)
+        # all-fields carries them, disabled by default like its other optional entities.
+        self.assertIn("debug", load_package(FIRMWARE / "all-fields-extras.yaml"))
+        all_fields = entities(load_package(FIRMWARE / "all-fields.yaml"))
+        for key in health:
+            with self.subTest(profile="all-fields.yaml", entity=key):
+                self.assertTrue(all_fields[key]["disabled_by_default"])
+        self.assertIn(("button", "Restart"), all_fields)
 
     def test_wpa2_policy_is_set_before_wifi_starts(self):
         from esphome.config_helpers import merge_config

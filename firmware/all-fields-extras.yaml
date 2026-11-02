@@ -4,6 +4,12 @@
 # Optional entities are disabled by default, including the provisional outdoor
 # conversion. Unknown bytes and factory/provisioning actions are not exposed.
 
+# Module-health diagnostics (LibreTiny heap, loop-time and reboot-reason APIs)
+# for long-run stability tracking; sampled every 60 s. Not in the TAC-12CHSD
+# profile, which keeps periodic Wi-Fi traffic to what the AC itself needs.
+debug:
+  update_interval: 60s
+
 switch:
   # --- Active (disabled_by_default: true): Working on TAC-12CHSD, non-classic/quirky ---
   - !include
@@ -218,6 +224,42 @@ sensor:
       if (!id(ac_control).status_fresh()) return NAN;
       return float((id(ac_control).status()[14] >> 3) & 15);
 
+  # --- Module health (disabled_by_default: true): long-run stability tracking ---
+  - platform: uptime
+    type: seconds
+    name: "Uptime"
+    disabled_by_default: true
+    filters: [{delta: 0.0}]
+  - platform: debug
+    free:
+      name: "Free heap"
+      disabled_by_default: true
+      filters: [{delta: 0.0}]
+    min_free:
+      name: "Minimum free heap"
+      disabled_by_default: true
+      filters: [{delta: 0.0}]
+    loop_time:
+      name: "Max loop time"
+      disabled_by_default: true
+      filters: [{delta: 0.0}]
+  - platform: template
+    name: "Wi-Fi signal"
+    disabled_by_default: true
+    unit_of_measurement: "dBm"
+    device_class: signal_strength
+    state_class: measurement
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    icon: mdi:wifi
+    update_interval: 60s
+    filters: [{delta: 0.0}]
+    lambda: |-
+      if (wifi::global_wifi_component == nullptr ||
+          !wifi::global_wifi_component->is_connected())
+        return {};
+      return float(wifi::global_wifi_component->wifi_rssi());
+
   # --- Model-dependent: Require extended status bytes P[60..61] ---
   - platform: template
     name: "Upper temperature limit"
@@ -245,6 +287,14 @@ sensor:
       if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 61) return NAN;
       const int value = id(ac_control).status()[61] & 15;
       return float(value <= 9 ? 16 + value : 16);
+
+text_sensor:
+  # Last reboot reason, published at boot. On the tested RTL8720CF an OTA
+  # restart also reads "Power-On"; it does not distinguish power loss.
+  - platform: debug
+    reset_reason:
+      name: "Reset reason"
+      disabled_by_default: true
 
 binary_sensor:
   # --- Active (disabled_by_default: true): Present in TAC-12CHSD 55-byte status ---
