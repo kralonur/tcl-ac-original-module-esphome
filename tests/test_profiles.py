@@ -86,6 +86,7 @@ class ProfileTests(unittest.TestCase):
                 with self.subTest(profile=profile, entity=name):
                     self.assertFalse(selected[("sensor", name)].get("disabled_by_default", False))
             self.assertIn(("text_sensor", "Reset reason"), selected)
+            self.assertIn(("button", "Restart"), selected)
 
     def test_wpa2_policy_is_set_before_wifi_starts(self):
         from esphome.config_helpers import merge_config

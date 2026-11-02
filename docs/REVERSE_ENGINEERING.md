@@ -50,7 +50,7 @@ The useful control families include:
 
 A name in that table is not proof of a working feature on the tested AC. The normal Home Assistant entities cover the everyday controls. Additional and model-specific definitions live in [`tac-12chsd-extras.yaml`](../firmware/tac-12chsd-extras.yaml): some are available but disabled by default, while unsupported or extended features remain commented out. The community [`all-fields.yaml`](../firmware/all-fields.yaml) profile exposes all currently implemented entities with optional fields disabled by default; this is not capability autodetection. See [profile selection](CONTROLS.md#firmware-profiles). Factory and provisioning setters are not exposed as ordinary controls.
 
-The complete implemented names and validation are in [`tcl_ac.h`](../firmware/components/tcl_ac/tcl_ac.h) and [`ac_codec.h`](../firmware/ac_codec.h). See [controls](CONTROLS.md) for entity behavior and API actions.
+The complete implemented names and validation are in [`tcl_ac.h`](../firmware/components/tcl_ac/tcl_ac.h) and [`ac_codec.h`](../firmware/components/tcl_ac/ac_codec.h). See [controls](CONTROLS.md) for entity behavior and API actions.
 
 ## Why the temperature decoding isn't a guess
 
@@ -75,7 +75,7 @@ That discards the fractional part. The ESPHome climate entity and room-temperatu
 
 So the offset and scale aren't adjustments made to get a plausible reading: they are taken from the original firmware. Keeping tenths preserves information already present in the AC's reply. It does not make the physical sensor more accurate, calibrate it against a thermometer or prove what the phone app displays in every version.
 
-The packed-value and stock-compatible integer helpers are in [`ac_report.h`](../firmware/ac_report.h). The climate conversion is in [`tcl_ac_climate.h`](../firmware/components/tcl_ac/tcl_ac_climate.h), and the separate sensor uses the same conversion in the shared [`ac-common.yaml`](../firmware/ac-common.yaml) package.
+The packed-value and stock-compatible integer helpers are in [`ac_report.h`](../firmware/components/tcl_ac/ac_report.h). The climate conversion is in [`tcl_ac_climate.h`](../firmware/components/tcl_ac/tcl_ac_climate.h), and the separate sensor uses the same conversion in the shared [`ac-common.yaml`](../firmware/ac-common.yaml) package.
 
 ### Target temperature
 

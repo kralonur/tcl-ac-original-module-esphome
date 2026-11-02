@@ -170,16 +170,21 @@ inline void run() {
   assert((uart.written[merged + 10] & 0x07) == 3);          // fan wire for 4
 
   // A timer edit with a stale cache defers behind an automatic timers query,
-  // then lands as a 125-byte write that re-queries the timers table.
+  // waits if a scalar write is still awaiting status readback, then lands as a
+  // 125-byte write that re-queries the timers table.
   const std::vector<uint8_t> kTimerQuery = {0xBB, 0x00, 0x01, 0x0D, 0x03, 0x05, 0x00, 0x00, 0xB1};
   feed(ac, uart, status_reply(true));
   mark = uart.written.size();
   ac.special_timer(true, 1, 1, 90);
-  settle(ac, 1500);
+  settle(ac, 700);
   assert(tx_at(uart, mark, kTimerQuery) >= mark);
   assert(!tx_since(uart, mark, kTimerWritePrefix));
+  ac.set_property("screen", 1.0f);  // sets awaiting_status_ = true
   feed(ac, uart, reply(0x0D, std::vector<uint8_t>(119, 0)));
-  settle(ac, 1500);
+  settle(ac, 700);
+  assert(!tx_since(uart, mark, kTimerWritePrefix));  // blocked until fresh status
+  feed(ac, uart, status_reply(true));
+  settle(ac, 1200);
   const size_t write_at = tx_at(uart, mark, kTimerWritePrefix);
   assert(uart.written[write_at + 7] == 0x8C);   // ON display|enable|mandatory 0x80
   assert(uart.written[write_at + 8] == 1);      // 90 minutes -> 01:30
@@ -227,7 +232,21 @@ inline void run() {
   assert(std::fabs(ac.energy_counter() - 0.01f) < 1e-6);
   const float watts = ac.power_watts();
   assert(std::isfinite(watts) && watts > 6600.0f && watts < 7210.0f);
-  // A fully-off unit reports 0 W, not the last nonzero estimate.
+  // While the compressor keeps running, missing two expected ticks (~10.6 s at
+  // ~6800 W) expires power_watts() to NAN instead of holding the old high rate.
+  settle(ac, 5500);
+  feed(ac, uart, status_reply(true));
+  settle(ac, 5500);
+  assert(std::isnan(ac.power_watts()));
+  // Next tick resumes the estimate; compressor stop (status[33] == 0, fan on)
+  // clears it immediately on the status reply.
+  feed(ac, uart, energy_reply(0x02));
+  assert(std::isfinite(ac.power_watts()));
+  auto fan_only = status_payload(true);
+  fan_only[33] = 0;
+  feed(ac, uart, reply(0x04, std::move(fan_only)));
+  assert(std::isnan(ac.power_watts()));
+  // A fully-off unit reports 0 W, not NAN or the last nonzero estimate.
   feed(ac, uart, status_reply(false));
   assert(ac.power_watts() == 0.0f);
   assert(climate.mode == climate::CLIMATE_MODE_OFF);

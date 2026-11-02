@@ -30,13 +30,13 @@ HA preserves existing entity enable/disable choices across firmware updates: `di
 | Generator mode | Optional power-limit control (0–3), disabled by default; actual limiting behavior is unverified |
 | Room temperature | Received temperature in tenths of a degree Celsius |
 | Outdoor temperature (estimated) | Provisional `status[30] - 20` °C conversion; whole-degree resolution |
-| Power / Energy | Power derived from energy-counter changes; cumulative energy in kWh |
+| Power / Energy | Power derived from energy-counter changes; cumulative energy in kWh. Reports `0 W` when off, clears on compressor stop (`status[33] == 0`), and expires after two missed tick intervals at the prior rate (capped at 180 s) when load drops while running |
 | Supply voltage / Compressor frequency | **Inferred labels**, not verified measurements; voltage byte can wrap above 255 |
 | AC link | Status received within the last ten seconds |
 | Error codes | Received numeric codes or `none`; not a diagnosis |
 | Uptime / Wi-Fi signal | Module uptime and received-signal strength, sampled every 60 s |
 | Free heap / Minimum free heap / Max loop time | Module memory and worst loop time since the last sample, from LibreTiny APIs; for long-run stability tracking |
-| Reset reason | Last reboot reason (LibreTiny API), published at boot |
+| Reset reason / Restart | Last reboot reason (LibreTiny API, published at boot) and diagnostic module-restart button |
 
 Room-temperature decoding uses the original firmware's packed value, offset and scale; ESPHome retains the room reading's tenths instead of the stock report's integer truncation. See [the formulas and reverse-engineering details](REVERSE_ENGINEERING.md#why-the-temperature-decoding-isnt-a-guess).
 

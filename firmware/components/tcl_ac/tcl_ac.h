@@ -156,9 +156,10 @@ class TclAc : public Component, public uart::UARTDevice {
     return NAN;
   }
   // Milliseconds a d(kWh)/dt rate stays valid without a new counter tick: at
-  // rate R watts, 0.01 kWh (36 kJ) is due within 36000000/R ms. After two
-  // missed intervals the load changed, so report unknown instead of the last
-  // nonzero estimate; the hard cap keeps slow loads bounded.
+  // rate R watts, 0.01 kWh (36 kJ) is due within 36000000/R ms. Compressor stop
+  // (status_[33] == 0) already clears energy_rate_w_ on the next status frame;
+  // this expires a high rate after two missed intervals when load drops while
+  // the compressor keeps running, with a 180 s cap for slow loads.
   static uint32_t energy_rate_valid_ms(float rate_w) {
     if (!std::isfinite(rate_w) || rate_w <= 0.0f)
       return 0;
@@ -480,7 +481,8 @@ class TclAc : public Component, public uart::UARTDevice {
       deferred_timer_.kind = DeferredTimer::Kind::none;
       return;
     }
-    if (!timer_cache_fresh_() || !paced_())
+    if (!status_seen_ || awaiting_status_ || millis() - last_status_ > 10000 ||
+        !timer_cache_fresh_() || !paced_())
       return;
     const DeferredTimer op = deferred_timer_;
     deferred_timer_.kind = DeferredTimer::Kind::none;
