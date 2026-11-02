@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <functional>
 #include <string>
+#include <utility>
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
@@ -40,6 +41,7 @@ class TclAc : public Component, public uart::UARTDevice {
         receive_();
     }
     flush_requests_();
+    flush_timer_();
     if (timer_refresh_ && paced_()) {
       query("timers");
       timer_refresh_ = false;
@@ -176,41 +178,45 @@ class TclAc : public Component, public uart::UARTDevice {
     }
   }
 
+  // Timer edits send immediately when the 119-byte cache is fresh. With a
+  // stale cache the edit is deferred, the timers table is queried automatically
+  // and the edit is sent once the reply refreshes the cache. The newest request
+  // replaces an older deferred one. Fresh AC status is still required.
   void special_timer(bool on, int display, int enable, int minutes) {
-    if (!timer_ready_() || !can_send_())
-      return;
-    auto candidate = timers_;
-    if (!candidate.special(on, display, enable, minutes)) {
-      ESP_LOGW("tcl_ac", "Rejected special timer fields; no TX");
-      return;
-    }
-    timers_ = candidate;
-    send_timers_();
+    DeferredTimer op;
+    op.kind = DeferredTimer::Kind::special;
+    op.on = on;
+    op.display = display;
+    op.enable = enable;
+    op.minutes = minutes;
+    send_timer_(std::move(op));
   }
 
   void weekly_timer(int bank, int slot, int display, int enable, int minutes,
                     const std::string &days, int power_or_mode, int fan,
                     float temperature, int fahrenheit) {
-    if (!timer_ready_() || !can_send_())
-      return;
-    auto candidate = timers_;
-    if (!candidate.weekly(bank, slot, display, enable, minutes, days,
-                          power_or_mode, fan, temperature, fahrenheit)) {
-      ESP_LOGW("tcl_ac", "Rejected weekly timer fields; no TX");
-      return;
-    }
-    timers_ = candidate;
-    send_timers_();
+    DeferredTimer op;
+    op.kind = DeferredTimer::Kind::weekly;
+    op.bank = bank;
+    op.slot = slot;
+    op.display = display;
+    op.enable = enable;
+    op.minutes = minutes;
+    op.days = days;
+    op.power_or_mode = power_or_mode;
+    op.fan = fan;
+    op.temperature = temperature;
+    op.fahrenheit = fahrenheit;
+    send_timer_(std::move(op));
   }
 
   void clear_timer_bank(int bank, bool confirm) {
-    if (!confirm || !timer_ready_() || !can_send_())
+    if (!confirm)
       return;
-    if (!timers_.clear_bank(bank)) {
-      ESP_LOGW("tcl_ac", "Rejected timer bank; no TX");
-      return;
-    }
-    send_timers_();
+    DeferredTimer op;
+    op.kind = DeferredTimer::Kind::clear_bank;
+    op.bank = bank;
+    send_timer_(std::move(op));
   }
 
   void clear_energy(bool confirm) {
@@ -255,6 +261,19 @@ class TclAc : public Component, public uart::UARTDevice {
   double prev_energy_kwh_{NAN};
   float energy_rate_w_{NAN};
   std::function<void()> on_status_;
+
+  // One deferred timer edit (see the timer actions above).
+  struct DeferredTimer {
+    enum class Kind : uint8_t { none, special, weekly, clear_bank };
+    Kind kind = Kind::none;
+    bool on = false;
+    int display = 0, enable = 0, minutes = 0;
+    int bank = 0, slot = 0, power_or_mode = 0, fan = 0, fahrenheit = 0;
+    double temperature = 0;
+    std::string days;
+  };
+  DeferredTimer deferred_timer_{};
+  uint32_t deferred_timer_since_{0};
 
   // Native API numbers are float32: restore intended targetElectric
   // hundredths before the stock typed-double setter truncates (e.g. 12.36f
@@ -375,14 +394,8 @@ class TclAc : public Component, public uart::UARTDevice {
     return true;
   }
 
-  bool timer_ready_() const {
-    if (!control_ready_())
-      return false;
-    if (!timers_.ready || millis() - last_timer_ > 30000) {
-      ESP_LOGW("tcl_ac", "Query timers first: no fresh 119-byte timer cache; no TX");
-      return false;
-    }
-    return true;
+  bool timer_cache_fresh_() const {
+    return timers_.ready && millis() - last_timer_ <= 30000;
   }
 
   template<size_t N> void send_(const std::array<uint8_t, N> &frame) {
@@ -397,6 +410,76 @@ class TclAc : public Component, public uart::UARTDevice {
     send_(timers_.frame());
     timers_.ready = false;
     timer_refresh_ = true;
+  }
+
+  static bool apply_timer_(::tcl_ac::Timers &timers, const DeferredTimer &op) {
+    switch (op.kind) {
+      case DeferredTimer::Kind::special:
+        return timers.special(op.on, op.display, op.enable, op.minutes);
+      case DeferredTimer::Kind::weekly:
+        return timers.weekly(op.bank, op.slot, op.display, op.enable, op.minutes,
+                             op.days, op.power_or_mode, op.fan, op.temperature,
+                             op.fahrenheit);
+      case DeferredTimer::Kind::clear_bank:
+        return timers.clear_bank(op.bank);
+      default:
+        return false;
+    }
+  }
+
+  void send_timer_(DeferredTimer op) {
+    if (!control_ready_())
+      return;
+    if (!timer_cache_fresh_()) {
+      defer_timer_(std::move(op));
+      return;
+    }
+    if (!can_send_())
+      return;
+    auto candidate = timers_;
+    if (!apply_timer_(candidate, op)) {
+      ESP_LOGW("tcl_ac", "Rejected timer fields; no TX");
+      return;
+    }
+    timers_ = candidate;
+    send_timers_();
+  }
+
+  void defer_timer_(DeferredTimer op) {
+    // Validate against a throwaway ready cache so rejected fields never queue.
+    ::tcl_ac::Timers validator;
+    validator.ready = true;
+    if (!apply_timer_(validator, op)) {
+      ESP_LOGW("tcl_ac", "Rejected timer fields; not queued");
+      return;
+    }
+    ESP_LOGI("tcl_ac", "Timer cache stale; querying timers first, edit deferred");
+    deferred_timer_ = std::move(op);
+    deferred_timer_since_ = millis();
+    timer_refresh_ = true;
+  }
+
+  // Applies the deferred edit once the timers query has refreshed the cache;
+  // dropped with a warning after 5 s without a timer reply.
+  void flush_timer_() {
+    if (deferred_timer_.kind == DeferredTimer::Kind::none)
+      return;
+    if (millis() - deferred_timer_since_ > 5000) {
+      ESP_LOGW("tcl_ac", "No timer reply for 5 s; deferred timer edit dropped, no TX");
+      deferred_timer_.kind = DeferredTimer::Kind::none;
+      return;
+    }
+    if (!timer_cache_fresh_() || !paced_())
+      return;
+    const DeferredTimer op = deferred_timer_;
+    deferred_timer_.kind = DeferredTimer::Kind::none;
+    auto candidate = timers_;
+    if (!apply_timer_(candidate, op)) {
+      ESP_LOGW("tcl_ac", "Deferred timer edit rejected; no TX");
+      return;
+    }
+    timers_ = candidate;
+    send_timers_();
   }
 
   void log_decoded_status_(const uint8_t *p, size_t len) const {

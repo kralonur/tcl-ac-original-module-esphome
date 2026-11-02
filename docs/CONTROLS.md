@@ -46,12 +46,12 @@ Physical louver positions behind the labels have not been checked on this unit. 
 ## Command behavior and limits
 
 - Entity commands are queued and merged, then sent after fresh AC status. Unsent requests expire after five seconds. State is not published optimistically.
-- No state-control command is sent automatically at boot or reconnect. Status is polled every two seconds after a 15-second startup delay; energy is polled automatically once synchronized.
+- No state-control command is sent automatically at boot or reconnect. Status is polled every two seconds after a 15-second startup delay; energy is polled automatically once synchronized. A timers query is sent automatically only when a timer edit needs a fresh cache.
 - Entity state updates are sent to Home Assistant only when values change, including transitions to/from unavailable where reported. Numeric sensors use a zero-delta filter (strictly nonzero changes in the pinned ESPHome version); number/select controls and error text suppress identical states. UART polling and local sampling intervals are unchanged, including while the AC is off. API clients still receive an initial state snapshot on connection; connection keepalives and subscribed debug logs are separate traffic.
 - Scalar writes require an initial status synchronization, status no older than ten seconds, and a new status reply after each write. Every scalar command carries the complete cached state.
 - All transmissions share at least 500 ms pacing. Direct API actions that hit the pacing guard are rejected rather than queued.
 - Status payloads shorter than 25 bytes cannot synchronize, so controls remain refused. Frames must have valid checksums and the AC-to-module direction; loopback echoes do not unlock controls.
-- Timer editing requires a complete 119-byte timer reply received within 30 seconds. The recorded TAC-12CHSD uses shorter status replies; timer support is not established on this unit.
+- Timer edits require a complete 119-byte timer reply no older than 30 seconds. With a stale cache the edit is deferred, the timers table is queried automatically, and the edit is sent once the reply refreshes the cache; it is dropped with a warning after 5 s without a reply. The recorded TAC-12CHSD uses shorter status replies; timer support is not established on this unit.
 
 These gates limit accidental commands; they do not establish electrical safety, appliance compatibility or long-term reliability. Full stock recovery remains untested.
 
