@@ -163,8 +163,17 @@ class TclAc : public Component, public uart::UARTDevice {
   static uint32_t energy_rate_valid_ms(float rate_w) {
     if (!std::isfinite(rate_w) || rate_w <= 0.0f)
       return 0;
-    const double due_ms = 36000000.0 / double(rate_w);
-    return std::min(uint32_t(180000), static_cast<uint32_t>(2.0 * due_ms));
+    // Clamp in double: tiny rates would overflow uint32_t before the cap.
+    const double valid_ms = std::min(180000.0, 2.0 * 36000000.0 / double(rate_w));
+    return static_cast<uint32_t>(valid_ms);
+  }
+  // Watts from one counter step over dt_s seconds. Outside 5..600 s the sample
+  // is unusable and yields NAN, so a stale rate is never re-armed by a tick
+  // that refreshes prev_energy_ms_ (e.g. 900 W resurfacing after a 12 min gap).
+  static float energy_rate_sample(double delta_kwh, double dt_s) {
+    if (!(delta_kwh > 0.0) || !(dt_s >= 5.0 && dt_s <= 600.0))
+      return NAN;
+    return float(delta_kwh * 3600000.0 / dt_s);
   }
   // beepSwitch is not in the status reply: this is the cached value sent with
   // every control frame (stock default on, reset at boot).
@@ -192,8 +201,9 @@ class TclAc : public Component, public uart::UARTDevice {
 
   // Timer edits send immediately when the 119-byte cache is fresh. With a
   // stale cache the edit is deferred, the timers table is queried automatically
-  // and the edit is sent once the reply refreshes the cache. The newest request
-  // replaces an older deferred one. Fresh AC status is still required.
+  // and the edit is sent once the reply refreshes the cache. Edits made while
+  // others are deferred queue behind them (up to four) and are applied in order
+  // as one write. Fresh AC status is still required.
   void special_timer(bool on, int display, int enable, int minutes) {
     DeferredTimer op;
     op.kind = DeferredTimer::Kind::special;
@@ -274,7 +284,7 @@ class TclAc : public Component, public uart::UARTDevice {
   float energy_rate_w_{NAN};
   std::function<void()> on_status_;
 
-  // One deferred timer edit (see the timer actions above).
+  // Deferred timer edits, applied in order (see the timer actions above).
   struct DeferredTimer {
     enum class Kind : uint8_t { none, special, weekly, clear_bank };
     Kind kind = Kind::none;
@@ -284,7 +294,8 @@ class TclAc : public Component, public uart::UARTDevice {
     double temperature = 0;
     std::string days;
   };
-  DeferredTimer deferred_timer_{};
+  std::array<DeferredTimer, 4> deferred_timers_{};
+  size_t deferred_timer_count_{0};
   uint32_t deferred_timer_since_{0};
 
   // Native API numbers are float32: restore intended targetElectric
@@ -442,7 +453,8 @@ class TclAc : public Component, public uart::UARTDevice {
   void send_timer_(DeferredTimer op) {
     if (!control_ready_())
       return;
-    if (!timer_cache_fresh_()) {
+    // Queue behind earlier deferred edits so they cannot land after this one.
+    if (deferred_timer_count_ || !timer_cache_fresh_()) {
       defer_timer_(std::move(op));
       return;
     }
@@ -465,32 +477,45 @@ class TclAc : public Component, public uart::UARTDevice {
       ESP_LOGW("tcl_ac", "Rejected timer fields; not queued");
       return;
     }
-    ESP_LOGI("tcl_ac", "Timer cache stale; querying timers first, edit deferred");
-    deferred_timer_ = std::move(op);
-    deferred_timer_since_ = millis();
-    timer_refresh_ = true;
+    if (deferred_timer_count_ == deferred_timers_.size()) {
+      ESP_LOGW("tcl_ac", "Deferred timer queue full; edit not queued, no TX");
+      return;
+    }
+    if (!deferred_timer_count_) {
+      deferred_timer_since_ = millis();
+      timer_refresh_ = true;
+    }
+    deferred_timers_[deferred_timer_count_++] = std::move(op);
+    ESP_LOGI("tcl_ac", "Timer cache stale; querying timers first, %u edit(s) deferred",
+             unsigned(deferred_timer_count_));
   }
 
-  // Applies the deferred edit once the timers query has refreshed the cache;
-  // dropped with a warning after 5 s without a timer reply.
+  // Applies the deferred edits, in order, as one write once the timers query
+  // has refreshed the cache; all are dropped with a warning after 5 s without
+  // a timer reply.
   void flush_timer_() {
-    if (deferred_timer_.kind == DeferredTimer::Kind::none)
+    if (!deferred_timer_count_)
       return;
     if (millis() - deferred_timer_since_ > 5000) {
-      ESP_LOGW("tcl_ac", "No timer reply for 5 s; deferred timer edit dropped, no TX");
-      deferred_timer_.kind = DeferredTimer::Kind::none;
+      ESP_LOGW("tcl_ac", "No timer reply for 5 s; %u deferred timer edit(s) dropped, no TX",
+               unsigned(deferred_timer_count_));
+      deferred_timer_count_ = 0;
       return;
     }
     if (!status_seen_ || awaiting_status_ || millis() - last_status_ > 10000 ||
         !timer_cache_fresh_() || !paced_())
       return;
-    const DeferredTimer op = deferred_timer_;
-    deferred_timer_.kind = DeferredTimer::Kind::none;
+    const size_t count = deferred_timer_count_;
+    deferred_timer_count_ = 0;
     auto candidate = timers_;
-    if (!apply_timer_(candidate, op)) {
-      ESP_LOGW("tcl_ac", "Deferred timer edit rejected; no TX");
-      return;
+    for (size_t i = 0; i < count; ++i) {
+      if (!apply_timer_(candidate, deferred_timers_[i])) {
+        ESP_LOGW("tcl_ac", "Deferred timer edit rejected; %u edit(s) dropped, no TX",
+                 unsigned(count));
+        return;
+      }
     }
+    ESP_LOGI("tcl_ac", "Sending %u deferred timer edit(s)", unsigned(count));
     timers_ = candidate;
     send_timers_();
   }
@@ -557,8 +582,7 @@ class TclAc : public Component, public uart::UARTDevice {
       if (active) {
         if (std::isfinite(prev_energy_kwh_) && kwh > prev_energy_kwh_ && now > prev_energy_ms_) {
           const double dt_s = double(now - prev_energy_ms_) / 1000.0;
-          if (dt_s >= 5.0 && dt_s <= 600.0)
-            energy_rate_w_ = float((kwh - prev_energy_kwh_) * 3600000.0 / dt_s);
+          energy_rate_w_ = energy_rate_sample(kwh - prev_energy_kwh_, dt_s);
           prev_energy_kwh_ = kwh;
           prev_energy_ms_ = now;
         } else if (!std::isfinite(prev_energy_kwh_) || kwh < prev_energy_kwh_) {

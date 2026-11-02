@@ -3,7 +3,11 @@
 // Host runtime tests for the tcl_ac component, run by tests/component.yaml.
 // Real ESPHome entities and the real component; an in-memory UART replaces the
 // appliance. Timestamps are real time (pacing is 500 ms, queue expiry 5 s),
-// so the whole run takes about 20 seconds.
+// so the whole run takes about 30 seconds.
+
+#ifdef NDEBUG
+#error "tests/test_component.h relies on assert(); build without NDEBUG"
+#endif
 
 #include <cassert>
 #include <cmath>
@@ -105,6 +109,19 @@ inline void settle(TclAc &ac, uint32_t ms) {
     ac.loop();
     delay(10);
   }
+}
+
+// Waits for the next background TX, then past the 500 ms pacing guard; the
+// next status poll is then ~1.5 s away, so a direct write is not rate limited.
+inline void wait_paced(TclAc &ac, TestUART &uart) {
+  const size_t before = uart.written.size();
+  const uint32_t until = millis() + 2500;
+  while (uart.written.size() == before && static_cast<int32_t>(until - millis()) > 0) {
+    ac.loop();
+    delay(10);
+  }
+  assert(uart.written.size() != before);
+  settle(ac, 550);
 }
 
 inline size_t tx_at(const TestUART &uart, size_t mark, const std::vector<uint8_t> &prefix) {
@@ -219,7 +236,51 @@ inline void run() {
   settle(ac, 1500);
   assert(!tx_since(uart, mark, kTimerWritePrefix));
 
+  // Edits made while the cache is stale queue in order and land as one write;
+  // a later edit to the same slot wins. A direct write leaves the cache stale.
+  feed(ac, uart, reply(0x0D, std::vector<uint8_t>(119, 0)));
+  wait_paced(ac, uart);
+  feed(ac, uart, status_reply(true));
+  mark = uart.written.size();
+  ac.special_timer(true, 1, 1, 90);  // fresh cache: sent at once
+  assert(tx_since(uart, mark, kTimerWritePrefix));
+  mark = uart.written.size();
+  ac.weekly_timer(1, 0, 1, 1, 60, "1", 1, 0, 0.0f, 0);
+  ac.special_timer(false, 1, 1, 45);
+  ac.weekly_timer(1, 0, 1, 1, 120, "1", 1, 0, 0.0f, 0);
+  settle(ac, 700);
+  assert(tx_at(uart, mark, kTimerQuery) >= mark);
+  assert(!tx_since(uart, mark, kTimerWritePrefix));
+  feed(ac, uart, reply(0x0D, std::vector<uint8_t>(119, 0)));
+  settle(ac, 1200);
+  const size_t queued = tx_at(uart, mark, kTimerWritePrefix);
+  assert(!tx_since(uart, queued + 1, kTimerWritePrefix));  // exactly one write
+  assert(uart.written[queued + 7] == 0x83);    // OFF display|enable|mandatory
+  assert(uart.written[queued + 10] == 0);      // OFF 45 minutes -> 00:45
+  assert(uart.written[queued + 11] == 45);
+  assert(uart.written[queued + 5 + 7] == 0xC0);  // bank 1 slot 0 display|enable
+  assert(uart.written[queued + 5 + 11] == 2);    // last edit wins: 02:00
+  assert(uart.written[queued + 5 + 12] == 0);
+
+  // The queue holds four edits; a fifth is rejected, not applied.
+  feed(ac, uart, status_reply(true));
+  mark = uart.written.size();
+  for (int minutes = 1; minutes <= 5; ++minutes)
+    ac.special_timer(true, 1, 1, minutes);
+  settle(ac, 700);
+  feed(ac, uart, reply(0x0D, std::vector<uint8_t>(119, 0)));
+  settle(ac, 1200);
+  const size_t capped = tx_at(uart, mark, kTimerWritePrefix);
+  assert(uart.written[capped + 8] == 0 && uart.written[capped + 9] == 4);
+
   // Energy counter ticks drive power; the estimate validity is tick-based.
+  // Samples outside 5..600 s are NAN, so a late tick cannot re-arm an old
+  // rate; tiny rates clamp to the cap instead of overflowing.
+  assert(std::isnan(TclAc::energy_rate_sample(0.01, 720.0)));
+  assert(std::isnan(TclAc::energy_rate_sample(0.01, 4.0)));
+  assert(std::isnan(TclAc::energy_rate_sample(0.0, 40.0)));
+  assert(std::fabs(TclAc::energy_rate_sample(0.01, 40.0) - 900.0f) < 0.01f);
+  assert(TclAc::energy_rate_valid_ms(1e-6f) == 180000);
   assert(TclAc::energy_rate_valid_ms(900.0f) == 80000);
   assert(TclAc::energy_rate_valid_ms(400.0f) == 180000);
   assert(TclAc::energy_rate_valid_ms(100.0f) == 180000);

@@ -54,7 +54,7 @@ Physical louver positions behind the labels have not been checked on this unit. 
 - Scalar writes require an initial status synchronization, status no older than ten seconds, and a new status reply after each write. Every scalar command carries the complete cached state.
 - All transmissions share at least 500 ms pacing. Direct API actions that hit the pacing guard are rejected rather than queued.
 - Status payloads shorter than 25 bytes cannot synchronize, so controls remain refused. Frames must have valid checksums and the AC-to-module direction; loopback echoes do not unlock controls.
-- Timer edits require a complete 119-byte timer reply no older than 30 seconds. With a stale cache the edit is deferred, the timers table is queried automatically, and the edit is sent once the reply refreshes the cache; it is dropped with a warning after 5 s without a reply. The recorded TAC-12CHSD uses shorter status replies; timer support is not established on this unit.
+- Timer edits require a complete 119-byte timer reply no older than 30 seconds. With a stale cache the edit is deferred, the timers table is queried automatically, and the edit is sent once the reply refreshes the cache. Further edits made meanwhile queue behind it (up to four, then rejected with a warning) and are applied in order as one write; all are dropped with a warning after 5 s without a reply. The recorded TAC-12CHSD uses shorter status replies; timer support is not established on this unit.
 
 These gates limit accidental commands; they do not establish electrical safety, appliance compatibility or long-term reliability. Full stock recovery remains untested.
 

@@ -121,7 +121,7 @@ esphome compile firmware/all-fields.yaml
 
 # Host build of the real component against actual ESPHome entities, with an
 # in-memory UART: status gating, queued/direct writes, float32 targetElectric
-# restore, timer deferral and expiry, energy-derived power. Takes ~20 s.
+# restore, timer deferral, queueing and expiry, energy-derived power. Takes ~30 s.
 esphome compile tests/component.yaml
 tests/.esphome/build/tcl-ac-component-test/.pioenvs/tcl-ac-component-test/program
 ```

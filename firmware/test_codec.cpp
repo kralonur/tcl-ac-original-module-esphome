@@ -2,6 +2,10 @@
 //   g++ -std=c++17 -Wall -Wextra -pedantic -Ifirmware/components/tcl_ac
 //       firmware/test_codec.cpp -o /tmp/tcl-codec-test && /tmp/tcl-codec-test
 
+#ifdef NDEBUG
+#error "firmware/test_codec.cpp relies on assert(); build without NDEBUG"
+#endif
+
 #include <cassert>
 #include <cmath>
 #include <cstdint>
