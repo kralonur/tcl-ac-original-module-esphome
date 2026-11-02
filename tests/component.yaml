@@ -1,0 +1,39 @@
+# Host build of the real component against ESPHome's actual entities, using an
+# in-memory UART. Run with:
+#   esphome compile tests/component.yaml
+#   tests/.esphome/build/tcl-ac-component-test/.pioenvs/tcl-ac-component-test/program
+esphome:
+  name: tcl-ac-component-test
+  includes:
+    - test_component.h
+  on_boot:
+    # Before any real UART traffic; the tests supply an in-memory UART.
+    priority: 1000
+    then:
+      - lambda: wl6u_ac::test::run();
+
+host:
+
+logger:
+  level: WARN
+
+external_components:
+  - source:
+      type: local
+      path: ../firmware/components
+    components: [tcl_ac]
+
+uart:
+  id: test_uart
+  port: /dev/null
+  baud_rate: 9600
+  parity: EVEN
+
+tcl_ac:
+  id: ac_control
+  uart_id: test_uart
+
+climate:
+  - platform: tcl_ac
+    tcl_ac_id: ac_control
+    name: Test climate

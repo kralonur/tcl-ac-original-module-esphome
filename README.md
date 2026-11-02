@@ -105,19 +105,32 @@ For bench work, `firmware/bench.yaml` only enables Wi-Fi, the API and the LOG UA
 
 Keep fixes focused and include the checks run in your pull request. Compatibility reports should name the exact AC/module revision and distinguish observed behavior from inference. Do not attach credentials, device dumps, compiled firmware or unredacted logs/photos. Keep API/OTA access on a trusted network; do not disclose sensitive findings in public issues.
 
-Profile regression checks (using the build environment above):
+Offline checks (using the build environment above), from the repository root:
 
 ```sh
+# Profile regression: entity selection, shared-entity equality, dedup, WPA2 hook.
 python -m unittest discover -s tests -v
+
+# Stock-faithful codec logic against fixed expectations (no ESPHome needed).
+g++ -std=c++17 -Wall -Wextra -pedantic -Ifirmware/components/tcl_ac \
+    firmware/test_codec.cpp -o /tmp/tcl-codec-test && /tmp/tcl-codec-test
+
+# Both control profiles must compile for the real RTL8720CF target.
 esphome compile firmware/tac-12chsd.yaml
 esphome compile firmware/all-fields.yaml
+
+# Host build of the real component against actual ESPHome entities, with an
+# in-memory UART: status gating, queued/direct writes, float32 targetElectric
+# restore, timer deferral and expiry, energy-derived power. Takes ~20 s.
+esphome compile tests/component.yaml
+tests/.esphome/build/tcl-ac-component-test/.pioenvs/tcl-ac-component-test/program
 ```
 
 These are offline checks, not hardware compatibility tests or uploads.
 
 ## Layout
 
-- `firmware/`: ESPHome configurations, local component and codecs.
+- `firmware/`: ESPHome configurations; the `tcl_ac` external component (protocol codecs, climate platform) is self-contained in `firmware/components/tcl_ac/`.
 - `tools/`: offline installation preparation and explicit live API helper.
 - `docs/`: flashing, recovery and control reference.
 
