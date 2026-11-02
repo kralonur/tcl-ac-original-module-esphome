@@ -31,6 +31,14 @@ def entities(config):
         result.update(entities(package))
     for domain in ("climate", "select", "switch", "number", "sensor", "text_sensor", "binary_sensor", "button"):
         for entity in config.get(domain, []):
+            # Multi-sensor platforms (debug) name each sub-sensor separately.
+            if entity.get("platform") == "debug":
+                for sub in ("free", "min_free", "loop_time", "device", "reset_reason"):
+                    if sub in entity:
+                        item = dict(entity[sub])
+                        item["platform"] = "debug"
+                        result[(domain, item["name"])] = item
+                continue
             result[(domain, entity["name"])] = entity
     return result
 
@@ -65,9 +73,19 @@ class ProfileTests(unittest.TestCase):
                     if domain == "sensor":
                         self.assertEqual(entity.get("filters"), [{"delta": 0.0}])
                     elif domain in ("number", "select", "text_sensor"):
+                        if entity.get("platform") == "debug":
+                            continue  # Upstream debug text sensor publishes at boot only.
                         entity_id = entity["id"]
                         self.assertIn(f"id({entity_id}).has_state()", entity["lambda"])
                         self.assertIn("return {};", entity["lambda"])
+
+    def test_module_health_diagnostics(self):
+        for profile in ("tac-12chsd.yaml", "all-fields.yaml"):
+            selected = entities(load_package(FIRMWARE / profile))
+            for name in ("Uptime", "Wi-Fi signal", "Free heap", "Minimum free heap", "Max loop time"):
+                with self.subTest(profile=profile, entity=name):
+                    self.assertFalse(selected[("sensor", name)].get("disabled_by_default", False))
+            self.assertIn(("text_sensor", "Reset reason"), selected)
 
     def test_wpa2_policy_is_set_before_wifi_starts(self):
         from esphome.config_helpers import merge_config

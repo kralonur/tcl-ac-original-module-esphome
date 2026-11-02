@@ -34,6 +34,9 @@ HA preserves existing entity enable/disable choices across firmware updates: `di
 | Supply voltage / Compressor frequency | **Inferred labels**, not verified measurements; voltage byte can wrap above 255 |
 | AC link | Status received within the last ten seconds |
 | Error codes | Received numeric codes or `none`; not a diagnosis |
+| Uptime / Wi-Fi signal | Module uptime and received-signal strength, sampled every 60 s |
+| Free heap / Minimum free heap / Max loop time | Module memory and worst loop time since the last sample, from LibreTiny APIs; for long-run stability tracking |
+| Reset reason | Last reboot reason (LibreTiny API), published at boot |
 
 Room-temperature decoding uses the original firmware's packed value, offset and scale; ESPHome retains the room reading's tenths instead of the stock report's integer truncation. See [the formulas and reverse-engineering details](REVERSE_ENGINEERING.md#why-the-temperature-decoding-isnt-a-guess).
 

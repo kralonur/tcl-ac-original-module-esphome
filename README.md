@@ -45,7 +45,7 @@ After installation, add the **ESPHome integration** in Home Assistant using the 
 
 Use WPA2-Personal or a WPA2/WPA3 mixed Wi-Fi network. On the tested module and ASUS router, WPA3 connections repeatedly dropped at the same minute and second each hour, making the device unavailable in Home Assistant despite strong signal. The timing suggested a compatibility problem during hourly group-key renewal, but the exact cause has not been proven.
 
-As a targeted workaround, an early boot hook in `firmware/bench.yaml` calls `wifi_set_wpa_mode(WPA2_ONLY_MODE)` before Wi-Fi starts. This restricts the module to WPA2 on initial connection and reconnects, without changing the router's security settings or the network credentials. WPA2 with AES was confirmed after flashing, and the device stayed connected through the first previously failing hourly boundary; long-term stability is not yet verified.
+As a targeted workaround, an early boot hook in `firmware/bench.yaml` calls `wifi_set_wpa_mode(WPA2_ONLY_MODE)` before Wi-Fi starts. This restricts the module to WPA2 on initial connection and reconnects, without changing the router's security settings or the network credentials. WPA2 with AES was confirmed after flashing, and the device has since run for more than 60 hours without a Wi-Fi drop. Uptime, Wi-Fi-signal, heap and reset-reason sensors were added so this can be tracked in Home Assistant long-term instead of asserted.
 
 WPA3-only networks are not supported with this policy. Protected management frames (PMF) are not disabled, and the router's normal group-key renewal remains enabled.
 
@@ -54,7 +54,7 @@ WPA3-only networks are not supported with this policy. Protected management fram
 - Climate: off, auto, cool, dry, fan and heat; 16–31 °C in 0.5 °C steps.
 - Fan, swing, louver position, Eco/Boost/Sleep presets.
 - Display, beep, health, anti-mould, 3D airflow and light-sense switches.
-- Room temperature, power, energy, AC-link and error diagnostics.
+- Room temperature, power, energy, AC-link, error diagnostics and module-health sensors (uptime, Wi-Fi signal, heap, worst loop time, reset reason).
 
 See [controls and limitations](docs/CONTROLS.md) for entity behavior, optional features and API actions. A delivered API call or TX log does not prove the AC accepted a command. Supply-voltage and compressor-frequency labels are inferred; physical louver labels have not been verified.
 

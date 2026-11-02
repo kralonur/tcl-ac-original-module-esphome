@@ -46,6 +46,11 @@ external_components:
 logger:
   level: DEBUG
 
+# Module-health diagnostics (LibreTiny heap and reboot-reason APIs), so
+# long-run stability is tracked in Home Assistant instead of asserted.
+debug:
+  update_interval: 60s
+
 uart:
   id: ac_uart
   tx_pin: PA11
@@ -343,6 +348,36 @@ sensor:
     lambda: |-
       if (!id(ac_control).status_fresh() || id(ac_control).status_length() <= 33) return {};
       return float(id(ac_control).status()[33]);
+  - platform: uptime
+    type: seconds
+    name: "Uptime"
+    filters: [{delta: 0.0}]
+  - platform: debug
+    free:
+      name: "Free heap"
+      filters: [{delta: 0.0}]
+    min_free:
+      name: "Minimum free heap"
+      filters: [{delta: 0.0}]
+    loop_time:
+      name: "Max loop time"
+      filters: [{delta: 0.0}]
+  - platform: template
+    name: "Wi-Fi signal"
+    id: ac_wifi_signal
+    unit_of_measurement: "dBm"
+    device_class: signal_strength
+    state_class: measurement
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    icon: mdi:wifi
+    update_interval: 60s
+    filters: [{delta: 0.0}]
+    lambda: |-
+      if (wifi::global_wifi_component == nullptr ||
+          !wifi::global_wifi_component->is_connected())
+        return {};
+      return float(wifi::global_wifi_component->wifi_rssi());
 
 binary_sensor:
   - platform: template
@@ -367,3 +402,6 @@ text_sensor:
       if (out.empty()) out = "none";
       if (id(ac_error_codes).has_state() && id(ac_error_codes).state == out) return {};
       return out;
+  - platform: debug
+    reset_reason:
+      name: "Reset reason"
