@@ -1,4 +1,6 @@
 # Shared controls package, not a standalone firmware target.
+# Package-safe for remote use: each entry point declares the tcl_ac
+# external component source itself (local here, git in device-builder.yaml).
 # Original RTL8720CF, migrated LibreTiny layout only.
 # Raw TX/RX + decoded RX logs + Wi-Fi OTA enabled so future updates do not require
 # removing the module from the AC. No factory/reset/provisioning actions exposed.
@@ -30,12 +32,6 @@ esphome:
         - logger.log:
             level: WARN
             format: "EXPERIMENTAL AC CONTROLS: raw TX/RX; TX does not prove AC acceptance."
-
-external_components:
-  - source:
-      type: local
-      path: components
-    components: [tcl_ac]
 
 logger:
   level: DEBUG

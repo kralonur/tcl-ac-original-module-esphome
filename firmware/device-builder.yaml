@@ -1,0 +1,32 @@
+# ESPHome Device Builder configuration for an ALREADY MIGRATED WL6U module.
+#
+# Use this only for updates after the first serial installation
+# (docs/FLASHING.md). It cannot migrate a module running stock TCL firmware.
+#
+# 1. Copy this file into Device Builder as tcl-wl6u-ac.yaml.
+# 2. Put the SAME wifi_ssid, wifi_password, api_encryption_key, ota_password
+#    and recovery_ap_password you used for the first installation in
+#    Device Builder's secrets (see secrets.example.yaml). A different
+#    ota_password or API key will not match the running firmware.
+# 3. Validate, then Install -> Wirelessly.
+#
+# The node name stays tcl-wl6u-ac so OTA and Home Assistant keep finding it.
+packages:
+  tcl_wl6u:
+    url: https://github.com/kralonur/tcl-wl6u-esphome
+    ref: main
+    refresh: 1d
+    files:
+      - firmware/ac-common.yaml
+      # Tested TAC-12CHSD selection. For the community testing profile with
+      # every implemented entity, use firmware/all-fields-extras.yaml instead.
+      - firmware/tac-12chsd-extras.yaml
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/kralonur/tcl-wl6u-esphome
+      ref: main
+      path: firmware/components
+    refresh: 1d
+    components: [tcl_ac]

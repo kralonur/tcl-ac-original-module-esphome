@@ -7,3 +7,10 @@
 packages:
   controls: !include ac-common.yaml
   extras: !include all-fields-extras.yaml
+
+# Repository checkout build. For ESPHome Device Builder see device-builder.yaml.
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [tcl_ac]

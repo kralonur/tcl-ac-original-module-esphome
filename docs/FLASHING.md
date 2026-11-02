@@ -189,6 +189,10 @@ esphome compile firmware/tac-12chsd.yaml && \
 esphome upload firmware/tac-12chsd.yaml --device YOUR_DEVICE_IP
 ```
 
+`esphome upload` sends whatever was compiled last. Both profiles share one build directory, so compile the profile you mean to upload immediately before uploading (or use `esphome run`, which does both).
+
+**ESPHome Device Builder:** after the first installation, [`firmware/device-builder.yaml`](../firmware/device-builder.yaml) builds the same configuration from this repository on GitHub. Copy it into Device Builder as `tcl-wl6u-ac.yaml`, put the same secrets used for the first installation into Device Builder's secrets, then **Install → Wirelessly**.
+
 Keep the same API key, OTA password and local settings unless intentionally changing them. Save the working source/configuration and private build artifacts before updating. Do not perform a first stock-to-LibreTiny migration by OTA.
 
 **Existing passwordless installations:** add a fresh random `ota_password` to your existing local secrets before compiling. The upload above sends the newly password-protected image to the old server, which does not request password authentication. Subsequent uploads must use the new password. This migration was verified on the tested TAC-12CHSD on 2026-10-28: the updated firmware reconnected through the encrypted API and received AC status and energy replies. A subsequent password-authenticated upload was also verified on the same unit. Rejection of an incorrect password remains untested. Keep serial recovery available and verify the running firmware after updating.

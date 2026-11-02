@@ -113,6 +113,26 @@ class ProfileTests(unittest.TestCase):
         security_boot = next(action for action in boot if action["priority"] > 250)
         self.assertIn("wifi_set_wpa_mode(WPA2_ONLY_MODE)", security_boot["then"][0]["lambda"])
 
+    def test_device_builder_config_matches_tac_profile(self):
+        # Remote packages resolve a local component path against the user's
+        # config directory, so only entry points may declare the source.
+        root = FIRMWARE.parent
+        self.assertNotIn("external_components", load_package(FIRMWARE / "ac-common.yaml"))
+        for profile in ("tac-12chsd.yaml", "all-fields.yaml"):
+            with self.subTest(profile=profile):
+                (source,) = load_package(FIRMWARE / profile)["external_components"]
+                self.assertEqual(source["source"], {"type": "local", "path": "components"})
+        builder = yaml.safe_load((FIRMWARE / "device-builder.yaml").read_text())
+        package = builder["packages"]["tcl_wl6u"]
+        tac_includes = re.findall(r"!include (\S+)", (FIRMWARE / "tac-12chsd.yaml").read_text())
+        self.assertEqual(package["files"], [f"firmware/{name}" for name in tac_includes])
+        for name in package["files"]:
+            self.assertTrue((root / name).is_file(), name)
+        (component,) = builder["external_components"]
+        self.assertEqual(component["source"]["url"], package["url"])
+        self.assertEqual(component["source"]["ref"], package["ref"])
+        self.assertTrue((root / component["source"]["path"] / "tcl_ac" / "__init__.py").is_file())
+
     def test_shared_controls_are_identical(self):
         tac = entities(load_package(FIRMWARE / "tac-12chsd.yaml"))
         all_fields = entities(load_package(FIRMWARE / "all-fields.yaml"))
