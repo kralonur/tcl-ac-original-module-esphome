@@ -20,17 +20,17 @@ The five-region migration and later controls installation worked on one owner's 
 
 Use the **LOG** pads, not the AC connector's TX/RX pins:
 
-![WL6U back with arrows marking GND, LOG-TX to adapter RXD, LOG-RX from adapter TXD, and CLK pulled to 3.3 V through 10 kΩ](images/wl6u-flashing-pads.webp)
+![Back of the WL6U_V4.0 with the GND, LOG-TX, LOG-RX and CLK pads and the +5V header pin marked](images/wl6u-flashing-pads.webp)
 
-Back-of-board view, matching the labels on the tested WL6U_V4.0. The CLK connection is a temporary pull-up for download mode, not the module's power input. Follow the complete wiring table below, including the separate +5V supply.
+Back-of-board view of the tested WL6U_V4.0; the marked names match the board's own silkscreen labels. Check those labels on your board rather than relying on this photo or cable colors.
 
-| Connection | Module pad / input |
-| --- | --- |
-| USB–UART **TXD**, 3.3 V logic | **LOG-RX** |
-| USB–UART **RXD** | **LOG-TX** |
-| USB–UART GND and supply GND | **GND** |
-| Regulated supply +5 V | Labeled **+5V** input |
-| Verified 3.3 V → **10 kΩ resistor** | **CLK** |
+| Pad (marked above) | Connect to | Notes |
+| --- | --- | --- |
+| **GND** | USB–UART GND **and** 5 V supply GND | Common ground for everything |
+| **LOG-TX** | USB–UART **RXD** | Module output, 3.3 V logic |
+| **LOG-RX** | USB–UART **TXD** | Module input, 3.3 V logic only |
+| **CLK** | Verified 3.3 V through a **10 kΩ resistor** | Download mode only. Pulled **up**, never to GND, never 5 V |
+| **+5V** (AC header) | Regulated 5 V supply + | Module power input |
 
 Leave DATA, Reset, GPIO13/14 and adapter DTR/RTS unconnected. Do not ground GPIO13/PA13. Do not apply 5 V to LOG, CLK or any GPIO. Do not connect two power supplies to +5V. Wire orientation is determined by board labels, **not cable colors or a mirrored photo**.
 

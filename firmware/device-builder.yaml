@@ -13,7 +13,7 @@
 # The node name stays tcl-wl6u-ac so OTA and Home Assistant keep finding it.
 packages:
   tcl_wl6u:
-    url: https://github.com/kralonur/tcl-wl6u-esphome
+    url: https://github.com/kralonur/tcl-ac-original-module-esphome
     ref: main
     refresh: 1d
     files:
@@ -25,7 +25,7 @@ packages:
 external_components:
   - source:
       type: git
-      url: https://github.com/kralonur/tcl-wl6u-esphome
+      url: https://github.com/kralonur/tcl-ac-original-module-esphome
       ref: main
       path: firmware/components
     refresh: 1d

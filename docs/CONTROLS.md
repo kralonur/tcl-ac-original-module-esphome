@@ -61,7 +61,7 @@ These gates limit accidental commands; they do not establish electrical safety, 
 
 ### LibreTiny serial receive patch
 
-Both control profiles wrap `SerialClass::read()` at link time ([`libretiny_serial_fix.h`](../firmware/libretiny_serial_fix.h)). The LibreTiny Realtek core drains the UART receive ring buffer from the main task without a critical section while the receive interrupt fills it; a single lost counter update shifts every later read (observed as a 5-byte shift that dropped the AC link on the tested unit). The wrapper holds a FreeRTOS critical section for the duration of each read, which prevents that race. This is the same fix as upstream [LibreTiny PR #432](https://github.com/libretiny-eu/libretiny/pull/432) (issues [#154](https://github.com/libretiny-eu/libretiny/issues/154), [#419](https://github.com/libretiny-eu/libretiny/issues/419)); the wrap can be removed once a LibreTiny release includes it.
+Both control profiles wrap `SerialClass::read()` at link time ([`libretiny_serial_fix.h`](../firmware/components/tcl_ac/libretiny_serial_fix.h)). The LibreTiny Realtek core drains the UART receive ring buffer from the main task without a critical section while the receive interrupt fills it; a single lost counter update shifts every later read (observed as a 5-byte shift that dropped the AC link on the tested unit). The wrapper holds a FreeRTOS critical section for the duration of each read, which prevents that race. This is the same fix as upstream [LibreTiny PR #432](https://github.com/libretiny-eu/libretiny/pull/432) (issues [#154](https://github.com/libretiny-eu/libretiny/issues/154), [#419](https://github.com/libretiny-eu/libretiny/issues/419)); the wrap can be removed once a LibreTiny release includes it.
 
 ## Logs
 
@@ -93,7 +93,30 @@ Use Home Assistant entities for ordinary operation. The controls target also exp
 
 Weekly bank 1 uses `power_or_mode` as power 0/1. Bank 2 uses timer-specific numeric mode/fan encodings, **not** ordinary scalar enums. Timer editing preserves other slots; do not use it without understanding the received table. Factory reset, provisioning and arbitrary raw-packet actions are not exposed.
 
-Scalar property names and validation are defined in [`tcl_ac.h`](../firmware/components/tcl_ac/tcl_ac.h) and [`ac_codec.h`](../firmware/ac_codec.h). Common values: `powerSwitch` 0/1; `targetTemperature` 16–31 in half-degree steps; `workMode` 0 auto, 1 cool, 2 dry, 3 fan, 4 heat; `windSpeed` 0 auto or 2–6 for Speed 1–5.
+Scalar property names and validation are defined in [`tcl_ac.h`](../firmware/components/tcl_ac/tcl_ac.h) and [`ac_codec.h`](../firmware/components/tcl_ac/ac_codec.h). Common values: `powerSwitch` 0/1; `targetTemperature` 16–31 in half-degree steps; `workMode` 0 auto, 1 cool, 2 dry, 3 fan, 4 heat; `windSpeed` 0 auto or 2–6 for Speed 1–5.
+
+### Alerting on error codes
+
+The **Error codes** text sensor reports stock numeric codes or `none`; an unattended change is easy to miss. A Home Assistant automation can notify when the AC reports any code (Home Assistant 2024.10+ syntax; adjust ids to yours):
+
+```yaml
+automation:
+  - alias: TCL AC error code reported
+    triggers:
+      - trigger: state
+        entity_id: sensor.tcl_wl6u_ac_error_codes
+        not_to:
+          - "none"
+          - unavailable
+          - unknown
+    actions:
+      - action: notify.persistent_notification
+        data:
+          title: AC error
+          message: "Error code(s): {{ states('sensor.tcl_wl6u_ac_error_codes') }}"
+```
+
+Codes are stock report numbers, not diagnoses; check the AC's own display and manual before acting.
 
 The optional helper reads your local API key. It requires the firmware Python environment. Without an action argument it only subscribes to logs and lists actions:
 

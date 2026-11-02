@@ -39,6 +39,27 @@ On the disconnected bench, remove the CLK strap for normal boot and monitor LOG-
 
 If the installed firmware cannot join Wi-Fi and has no usable recovery hotspot, use the serial route below, restore stock if needed, then follow the installation guide again with corrected local secrets. Do not invent a factory-reset pin sequence.
 
+## Automatic reboot when the AC link wedges
+
+The LibreTiny serial receive race was fixed in firmware ([wrapped `SerialClass::read()`](../firmware/components/tcl_ac/libretiny_serial_fix.h)), so a stuck UART driver is not expected. If it ever recurs, the module stays reachable in Home Assistant while the **AC link** binary sensor stays offline. A one-shot Home Assistant reboot covers that case without touching the module when the AC is simply unpowered:
+
+```yaml
+automation:
+  - alias: Reboot WL6U module when the AC link wedges
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.tcl_wl6u_ac_ac_link
+        to: "off"
+        for:
+          minutes: 15
+    actions:
+      - action: button.press
+        target:
+          entity_id: button.tcl_wl6u_ac_restart
+```
+
+The trigger only fires on a real `off` state, not `unavailable`: if mains power to the AC (and thus the module) is cut, the entity becomes unavailable and no reboot is attempted. One reboot is issued per continuous 15-minute offline period; if the link does not return, the trigger does not refire. Adjust the entity ids to your actual **AC link** sensor and the device's ESPHome **Restart** button (Home Assistant 2024.10+ syntax). On the tested unit a reboot restores UART reception; this automation is a targeted mitigation, not a fix for an unresponsive AC main board.
+
 ## Cannot connect to the downloader
 
 1. Power off. Recheck the [wiring table](FLASHING.md#2-wire-it-with-all-power-off): adapter TXD→**LOG-RX**, RXD←**LOG-TX**, shared GND. The connector's ordinary TX/RX are the wrong UART for programming.
