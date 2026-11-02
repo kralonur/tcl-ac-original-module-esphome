@@ -61,7 +61,7 @@ These gates limit accidental commands; they do not establish electrical safety, 
 
 ### LibreTiny serial receive patch
 
-Both control profiles wrap `SerialClass::read()` at link time ([`libretiny_serial_fix.h`](../firmware/libretiny_serial_fix.h)). The LibreTiny Realtek core drains the UART receive ring buffer from the main task without a critical section while the receive interrupt fills it; a single lost counter update shifts every later read (observed as a 5-byte shift that dropped the AC link on the tested unit). The wrapper holds the SDK's UART critical section for the duration of each read, which prevents that race.
+Both control profiles wrap `SerialClass::read()` at link time ([`libretiny_serial_fix.h`](../firmware/libretiny_serial_fix.h)). The LibreTiny Realtek core drains the UART receive ring buffer from the main task without a critical section while the receive interrupt fills it; a single lost counter update shifts every later read (observed as a 5-byte shift that dropped the AC link on the tested unit). The wrapper holds a FreeRTOS critical section for the duration of each read, which prevents that race. This is the same fix as upstream [LibreTiny PR #432](https://github.com/libretiny-eu/libretiny/pull/432) (issues [#154](https://github.com/libretiny-eu/libretiny/issues/154), [#419](https://github.com/libretiny-eu/libretiny/issues/419)); the wrap can be removed once a LibreTiny release includes it.
 
 ## Logs
 

@@ -11,26 +11,30 @@
 //
 // ac-common.yaml adds -Wl,--wrap for the mangled SerialClass::read() symbol,
 // so every call (including the HardwareSerial vtable entry used by ESPHome's
-// LibreTiny UART component) lands in the __wrap function below. Holding the
-// SDK's UART critical section across the read is the same protection the core
-// itself uses when installing the RX hook; bytes arriving meanwhile wait in
-// the hardware FIFO and are stored by the interrupt right after exit.
+// LibreTiny UART component) lands in the __wrap function below. It holds a
+// FreeRTOS critical section across the read, the same fix as upstream PR
+// libretiny-eu/libretiny#432 (issues #154, #419); drop this wrap once a
+// LibreTiny release ships it. On RTL8710C the critical section raises BASEPRI
+// to configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY (2), which masks the UART
+// interrupt (UART_IRQPri 4). Bytes arriving meanwhile wait in the hardware
+// FIFO and are stored by the interrupt right after exit.
 #ifndef FIRMWARE_LIBRETINY_SERIAL_FIX_H_
 #define FIRMWARE_LIBRETINY_SERIAL_FIX_H_
 
-#if defined(LIBRETINY) && __has_include(<hal_uart.h>)
+#if defined(LIBRETINY) && __has_include(<FreeRTOS.h>)
 
-#include <hal_uart.h>
+#include <FreeRTOS.h>
+#include <task.h>
 
 extern "C" int __real__ZN11SerialClass4readEv(void *self);
 
 extern "C" int __wrap__ZN11SerialClass4readEv(void *self) {
-  hal_uart_enter_critical();
+  taskENTER_CRITICAL();
   const int value = __real__ZN11SerialClass4readEv(self);
-  hal_uart_exit_critical();
+  taskEXIT_CRITICAL();
   return value;
 }
 
-#endif  // LIBRETINY && hal_uart.h
+#endif  // LIBRETINY && FreeRTOS.h
 
 #endif  // FIRMWARE_LIBRETINY_SERIAL_FIX_H_
