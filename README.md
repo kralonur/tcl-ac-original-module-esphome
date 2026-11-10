@@ -8,6 +8,17 @@ That's what this project does. It keeps the original module and replaces its fir
 
 **Tested on one TAC-12CHSD so far.** Other models and revisions haven't been verified. Still experimental: reports from other TCL units are welcome (see [Help test other AC models](#help-test-other-ac-models)).
 
+## Why consider replacing the stock firmware?
+
+A Wi-Fi appliance doesn't need a vendor cloud between it and your home automation. For this module, replacing the firmware means:
+
+- **Keep AC data local.** Settings and readings travel directly between the module and Home Assistant over the encrypted ESPHome API, rather than through TCL's servers. You don't need a TCL account or app for this integration.
+- **Keep control when the internet is down.** Home Assistant talks to the AC over your local network; everyday control doesn't depend on TCL's service being reachable or continuing to support the device. Your Wi-Fi and Home Assistant still need to be running.
+- **Use more of the data already available.** Keep the room-temperature tenths discarded by the stock reporting code, expose diagnostic replies, and build your own history, alerts and automations instead of relying on the app's presentation.
+- **Reuse the hardware you own.** The original Wi-Fi module stays in place. There's no replacement ESP32 board to buy or fit inside the AC, and later firmware updates go over Wi-Fi.
+
+Local control is not a complete privacy or security guarantee: Home Assistant integrations, remote access and backups determine where data goes next. Keep API/OTA access on a trusted network and protect your credentials. This is also an experimental firmware replacement involving a mains appliance, not a risk-free app setting; check [hardware compatibility and safety](#is-this-for-you) and [recovery limitations](docs/RECOVERY.md) first.
+
 ## What you get
 
 Everything runs locally over the ESPHome API; no TCL account or cloud.
@@ -24,16 +35,24 @@ Everything runs locally over the ESPHome API; no TCL account or cloud.
 The module reads the AC's own status and energy replies directly, so you get the data itself rather than the vendor app's selection of it:
 
 - **Room temperature to 0.1 °C.** The stock firmware truncates it to whole degrees before reporting; this keeps the tenths already in the AC's reply.
-- **Live power (W) and cumulative energy (kWh)** from the AC's own energy counter. Track running cost per day or per cycle in Home Assistant's Energy dashboard.
-- **Compressor frequency (Hz):** see when the compressor is actually running and how hard, not just the mode you selected.
+- **Power and cumulative energy** from the AC's own energy counter, presented as W and kWh. Power is derived from counter changes; the physical units still need independent measurement validation before relying on cost estimates.
+- **Compressor frequency (Hz, inferred):** an additional diagnostic field, not yet a verified frequency measurement.
 - **Outdoor temperature** (estimated).
-- **Supply voltage** as reported by the AC.
+- **Supply voltage** (inferred label).
 - **Numeric error codes** exactly as the AC reports them, plus a **filter-blocked** flag (disabled by default). Alert on a fault the moment it appears.
 - **Raw internal readings** (disabled by default): indoor and outdoor coil, compressor discharge, indoor and outdoor fan, and a load index.
 - **AC link:** a heartbeat showing the AC is still answering, even when nothing changes.
 - **Raw UART receive logs** of every byte the AC sends, including the ones nobody has decoded yet.
 
 Labels marked *inferred*, *estimated* or *raw* are not verified measurements: compressor-frequency and supply-voltage labels are inferred from the stock code, the outdoor conversion is provisional, and the raw readings are tentatively labelled bytes. Physical louver labels have not been verified. A delivered API call or TX log does not prove the AC accepted a command. See [controls and limitations](docs/CONTROLS.md) for entity behavior, optional features and API actions, and [getting past the app's view](docs/REVERSE_ENGINEERING.md#getting-past-the-apps-view-of-the-ac) for what is decoded.
+
+### In Home Assistant
+
+<img src="docs/images/home-assistant-controls-sensors.webp" alt="Native Home Assistant Controls and Sensors cards showing the AC off, louver controls, compressor frequency, energy, estimated outdoor temperature, power and room temperature" width="360">
+<img src="docs/images/home-assistant-configuration.webp" alt="Native Home Assistant Configuration card showing anti-mould, beep, display and health switches, plus disabled optional entities" width="360">
+<img src="docs/images/home-assistant-diagnostics.webp" alt="Native Home Assistant Diagnostic card showing AC link Connected, no error codes, a Restart button, supply voltage and an expanded list of disabled optional entities" width="360">
+
+*Controls, sensors, configuration and diagnostics from my installation, using Home Assistant's standard device page—no custom dashboard cards required. The AC is off in these screenshots. Greyed-out optional entities are disabled, not live readings. Measurement caveats above still apply; the available entities depend on the firmware profile and configuration.*
 
 ## Is this for you?
 
